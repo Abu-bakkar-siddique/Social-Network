@@ -1,6 +1,6 @@
 {% extends "network/layout.html" %} {% block body %}
 <div class="auth-container">
-  <h2 style="text-align: center; margin-bottom: 10px">Login</h2>
+  <h2 style="text-align: center; color: #98a4b3; margin-bottom: 10px">Login</h2>
 
   {% if message %}
   <div class="message">{{ message }}</div>
@@ -9,21 +9,10 @@
   <form action="{% url 'login' %}" method="post">
     {% csrf_token %}
     <div class="form-group">
-      <input
-        autofocus
-        class="form-control shape-round"
-        type="text"
-        name="username"
-        placeholder="Username"
-      />
+      <input autofocus class="form-control shape-round" type="text" name="username" placeholder="Username" />
     </div>
     <div class="form-group">
-      <input
-        class="form-control shape-round"
-        type="password"
-        name="password"
-        placeholder="Password"
-      />
+      <input class="form-control shape-round" type="password" name="password" placeholder="Password" />
     </div>
     <button class="btn btn-prim shape-round" type="submit">Login</button>
   </form>
