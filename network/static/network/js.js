@@ -1,104 +1,36 @@
-// let allPages = ['feed', 'new-post']; //an array representation of all the pages in the application.
-
-// document.addEventListener("DOMContentLoaded", () => {
-
-//     document.querySelector("#feed-l").addEventListener("click", () => loadPage('feed'));
-//     document.querySelector("#new-post-l").addEventListener("click", () => loadPage('new-post'));
-//     loadPage('feed'); // laods th defalt page
-
-// });
-
-// // extracts csrf token from cookies
-// function CSRFToken() {
-//     const cookies = document.cookie.split(';');
-//     cookies.forEach(cookie => {
-//         const [name, value] = cookie.trim().split('=');
-//         if (name === 'csrftoken') {
-//             return value;
-//         }
-//     });
-// }
-
-// function NewPost() {
-
-//     fetch('/create_post', {
-//         method: 'POST',
-
-//         headers: {
-//             'Content-Type': 'application/json',
-//             'X-CSRFToken': CSRFToken()
-//         },
-
-//         body: JSON.stringify({
-//             'title': document.querySelector("#post_title").value,
-//             'text': document.querySelector("#post_text").value
-//         })
-
-//     })
-//         .then(response => {
-//             if (!response.ok) {
-//                 throw new Error('Network response was not ok');
-//             }
-//             return response.json(); // Convert response to JSON if it's expected
-//         })
-//         .then(data => {
-//             console.log('Success:', data);
-//         })
-//         .catch(error => {
-//             console.error('There was a problem with the fetch operation:', error);
-//         });
-
-
-
-// }
-// function loadPage(page) {
-//     console.log("clicked");
-//     allPages.forEach(element => {
-//         let link_id = element + "-l";
-
-//         if (element === page) {
-
-//             //activa the link and load the page
-//             document.querySelector(`#${element}`).classList.remove("d-none");
-//             document.querySelector(`#${link_id}`).classList.add("active");
-//         } else {
-//             // deactivate the link and unload the page
-//             document.querySelector(`#${element}`).classList.add("d-none");
-//             document.querySelector(`#${link_id}`).classList.remove("active");
-//         }
-//     });
-// }
+const { BrowserRouter, Route, Switch, Link, useHistory } = ReactRouterDOM;
+const { useState, useContext, createContext } = React;
+function CSRFToken() {
+    const token = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='));
+    return token ? decodeURIComponent(token.split('=')[1]) : null;
+}
 
 function NewPost() {
 
-    const [title, setTitle] = React.useState('');
-    const [text, setText] = React.useState('');
-    const [alertMessage, setAlertMessage] = React.useState('');
+    const [post, setPost] = React.useState({ title: '', body: '' });
 
     const submitPost = (event) => {
         event.preventDefault();
 
-        if (title && text) {
-
+        if (post.title && post.body) {
             fetch('/create_post', {
                 method: 'POST',
-
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': CSRFToken()
+                    'X-CSRFToken': CSRFToken(),
                 },
-
                 body: JSON.stringify({
-                    'title': title,
-                    'text': text
-                })
-
+                    'title': post.title,
+                    'body': post.body
+                }),
             })
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
                     }
-                    return response.json(); // Convert response to JSON if it's expected
+                    return response.json();
                 })
                 .then(data => {
                     console.log('Success:', data);
@@ -106,13 +38,11 @@ function NewPost() {
                 .catch(error => {
                     console.error('There was a problem with the fetch operation:', error);
                 });
+
             // Clear the form fields
-            setTitle('');
-            setText('');
-        }
-        else {
-            // call the error component
-            console.log("fill up all fields nigga")
+            setPost({ title: '', body: '' });
+        } else {
+            console.log('Please fill up all fields.');
         }
     };
 
@@ -120,23 +50,23 @@ function NewPost() {
         <div className="text-center">
             <div id="new-post" className="justify-content-center mt-4">
                 <div className="d-flex ml-2 justify-content-start">
-                    <h3 className=" main-heading">Create Post</h3>
+                    <h3 className="main-heading">Create Post</h3>
                 </div>
             </div>
 
             <form id="compose-form" onSubmit={submitPost}>
                 <textarea
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="form-control shape-round mb-3"
+                    value={post.title}
+                    onChange={(e) => setPost({ ...post, title: e.target.value })}
+                    className="form-control-x shape-round mb-3"
                     placeholder="Title"
                     rows="1"
                 />
 
                 <textarea
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    className="form-control shape-round mb-3"
+                    value={post.text}
+                    onChange={(e) => setPost({ ...post, body: e.target.value })}
+                    className="form-control-x shape-round mb-3"
                     placeholder="What's up on your mind?"
                     rows="6"
                 />
@@ -145,36 +75,680 @@ function NewPost() {
                     <button id="post-btn" type="submit" className="btn btn-prim shape-round col-2">Post</button>
                 </div>
             </form>
-            {alertMessage && (
-                <div id="alert_message" role="alert">
-                    {alertMessage}
+        </div>
+    );
+}
+
+
+function FixedNavbars({ user }) {
+    return (
+        <>
+            <div className="topnav">
+                <div className="search-container">
+                    <input type="text" className="search-input shape-round col-10" placeholder="Search..." />
+                    <button className="btn search-button shape-round col-2">Search</button>
                 </div>
-            )}
+            </div>
+
+            <div>
+                <nav className="sidebar">
+                    <a className="navbar-brand" to="/">Network</a>
+
+                    <ul className="navbar-nav">
+                        {user.authenticated && (
+                            <li className="nav-item">
+                                {/* add an image here with the username */}
+                                <Link className="nav-link" to="/profile"><strong>{user.username}</strong></Link>
+                            </li>
+                        )}
+
+                        <li className="nav-item">
+                            <Link className="nav-link" to="/feed">All Posts</Link>
+                        </li>
+
+                        {user.authenticated && (
+                            <>
+                                <li className="nav-item">
+                                    {/* added a to attribute to go to specific URL */}
+                                    <Link className="nav-link" to="/create_post">Create Post</Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link" to="/">Following</Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link" to="/logout">Log Out</Link>
+                                </li>
+                            </>
+                        )}
+
+                        {!user.authenticated && (
+                            <>
+                                <li className="nav-item">
+                                    <Link className="nav-link" to="/login">Log In</Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link" to="/register">Register</Link>
+                                </li>
+                            </>
+                        )}
+                    </ul>
+                </nav>
+            </div>
+        </>
+    );
+}
+
+function handleErrorField(elements) {
+    elements.forEach((id) => {
+        document.getElementById(id).classList.remove('form-control-x');
+        document.getElementById(id).classList.add('form-control-error');
+    })
+}
+
+
+function Login({ setUser }) {
+    const [credentials, setCredentials] = React.useState({ "username": '', "password": '' });
+    const history = useHistory();
+
+    let handleChange = (evnt) => {
+        const { name, value } = evnt.target; // field name and valuee extracted from the respective input field
+        setCredentials(prev => ({ ...prev, [name]: value }));
+    }
+
+    const loginCall = (event) => {
+        event.preventDefault();
+
+        if (!credentials.username && !credentials.password) {
+            handleErrorField(['username', 'password'])
+            return null;
+        }
+        else if (!credentials.username) {
+            handleErrorField(['username']);
+            return null;
+        }
+        else if (!credentials.password) {
+            handleErrorField(['password']);
+            return null;
+        }
+
+        fetch("/login", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRFToken()
+            },
+            body: JSON.stringify({
+                "username": credentials.username,
+                "password": credentials.password
+            })
+        }).then(response => {
+            if (!response.ok) {
+                console.log("wrong credentials")
+                handleErrorField(['username', 'password']);
+                throw new Error(`something went wrong ${response.status}`);
+            }
+            return response.json();
+        }).then(data => {
+
+            // set the user to be authenticated
+            setUser({ username: credentials.username, authenticated: true }); // updating the user state for navbar changes 
+            localStorage.setItem("user", JSON.stringify({
+                username: credentials.username,
+                authenticated: true
+            }
+            ));
+            history.push("/");
+        }).catch(error => {
+            console.log(error);
+        })
+    };
+
+    return (
+        <div className="auth-container">
+            <h2 style={{ textAlign: 'center', color: '#98a4b3', marginBottom: '10px' }}>Login</h2>
+
+            <form onSubmit={loginCall}>
+                <div className="form-group">
+                    <input id="username" value={credentials.username} autoFocus onChange={handleChange} className="form-control-x shape-round" type="text" name="username" placeholder="Username" />
+                </div>
+                <div className="form-group">
+                    <input id="password" value={credentials.password} className="form-control-x shape-round" onChange={handleChange} type="password" name="password" placeholder="Password" />
+                </div>
+                <button className="btn btn-prim shape-round" type="submit">Login</button>
+            </form>
+            <div className="auth-link">
+                Don't have an account?
+                <Link style={{ color: '#0ca88e' }} to="/register"> Register here.</Link>
+            </div>
+        </div>
+    );
+}
+function Register({ setUser }) {
+    const [registerInfo, setRegisterInfo] = React.useState({
+        "username_r": '',
+        'email_r': '',
+        "password_r": '',
+        'confirmation_r': ''
+    });
+    const history = useHistory();
+    function listenChange(event) {
+        const { name, value } = event.target;
+        setRegisterInfo(prev => ({ ...prev, [name]: value }));
+    }
+
+    const registerCall = (event) => {
+        event.preventDefault();
+
+        if (!registerInfo.username_r && !registerInfo.password_r && !registerInfo.email_r && !registerInfo.confirmation_r) {
+            handleErrorField(['username_r', 'password_r', 'email_r', 'confirmation_r']);
+            return null;
+        }
+        else if (!registerInfo.username_r) {
+            handleErrorField(['username_r'])
+            return null;
+        }
+        else if (!registerInfo.password_r) {
+            handleErrorField(['password_r'])
+            return null;
+        }
+        else if (!registerInfo.email_r) {
+            handleErrorField(['email_r'])
+            return null;
+        }
+        else if (!registerInfo.confirmation_r) {
+            handleErrorField(['confirmation_r'])
+            return null;
+        }
+        else if (registerInfo.password_r !== registerInfo.confirmation_r) {
+            handleErrorField(['confirmation_r', 'password_r']);
+            return null;
+        }
+
+        fetch("/register", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRFToken()
+            },
+            body: JSON.stringify({
+                "username": registerInfo.username_r,
+                "password": registerInfo.password_r,
+                "email": registerInfo.email_r,
+                "confirmation": registerInfo.confirmation_r
+            })
+        }).then(response => {
+            if (!response.ok) {
+                // only 409 is expected
+                console.log(`user already exists ${response.status}`);
+                throw new Error(response.status);
+            }
+            return response.json();
+        }).then(data => {
+            console.log(data.message);
+            // set the user to be authenticated
+            setUser({ username: registerInfo.username_r, authenticated: true }); // updating the user state for navbar changes 
+            localStorage.setItem("user", JSON.stringify({
+                username: registerInfo.username_r,
+                authenticated: true
+            }));
+            history.push('/');
+        }).catch(error => {
+            console.log(error);
+        })
+    };
+
+    return (
+        <div className="auth-container">
+            <h2 style={{ textAlign: 'center', color: '#98a4b3', marginBottom: '10px' }}>Register</h2>
+
+            <form onSubmit={registerCall} method="post">
+                <div className="form-group">
+                    <input id="username_r" value={registerInfo.username_r} className="form-control-x shape-round" onChange={listenChange} autoFocus type="text" name="username_r" placeholder="Username" />
+                </div>
+                <div className="form-group">
+                    <input id="email_r" value={registerInfo.email_r} className="form-control-x shape-round" onChange={listenChange} type="email" name="email_r" placeholder="Email Address" />
+                </div>
+                <div className="form-group">
+                    <input id="password_r" value={registerInfo.password_r} className="form-control-x shape-round" onChange={listenChange} type="password" name="password_r" placeholder="Password" />
+                </div>
+                <div className="form-group">
+                    <input id="confirmation_r" value={registerInfo.confirmation_r} className="form-control-x shape-round" onChange={listenChange} type="password" name="confirmation_r" placeholder="Confirm Password" />
+                </div>
+                <button className="btn btn-prim shape-round" type="submit">Register</button>
+            </form>
+            <div className="auth-link">
+                Already have an account?
+                <Link style={{ color: '#0ca88e' }} to='/login'> Log In here.</Link>
+            </div>
         </div>
     );
 }
 
-function feedPage() {
-
-    return (
-        <div>
-            <h1>This is the Feed</h1>
-        </div>
-    );
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    React
-})
-ReactDOM.render(<NewPost />, document.getElementById('root'));
-
-function renderPage(props) {
-    Page = props.page;
-    return (
-        <Page />
-    );
-}
-
+let userAuthenticated = false;
+const AuthGlobalContext = createContext();
 function App() {
-    // main app function,
+
+    let userVar = localStorage.getItem('user'); // user stored in the local storage if they ever logged in previously
+    const [user, setUser] = React.useState(userVar ? JSON.parse(userVar) : { username: undefined, userId: undefined, authenticated: false });
+
+    React.useEffect(() => {
+        // Fetch user authentication status
+
+        if (!user.authenticated) {
+            fetch("/", {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRFToken()
+                }
+            })
+                .then(response => {
+                    if (response.status === 219) {
+                        return null;
+                    }
+                    else if (response.status === 210) {
+                        console.log("invalid user");
+                        return null
+                    }
+                    else if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data) {
+
+                        setUser({
+                            username: data.username,
+                            authenticated: data.authenticated,
+                            userId: data.userId
+                        });
+
+                        localStorage.setItem('user', JSON.stringify({
+                            username: data.username,
+                            authenticated: data.authenticated
+                        }));
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching user data:", error);
+                });
+        }
+    }, []);
+    return (
+        <AuthGlobalContext.Provider value={{ user, setUser }}>
+            < BrowserRouter >
+                <FixedNavbars user={user} />
+                <Switch>
+                    {/* also factor these urls on the server side to avoid 404 */}
+                    <Route path="/create_post" component={NewPost} />
+                    <Route path="/feed" component={AllPosts} />
+                    <Route path="/" exact component={() => <h1>Welcome to Network</h1>} />
+                    <Route
+                        path="/login"
+                        render={(props) => <Login {...props} setUser={setUser} />}
+                    />
+                    <Route path="/logout"
+                        render={(props) => <HandleLogout {...props} setUser={setUser} HandleLogout />}
+                    />
+                    <Route path="/register"
+                        render={(props) => <Register {...props} setUser={setUser} Register />}
+                    />
+                    <Route path="/profile"
+                        render={(props) => <ProfilePage  {...props} user={user} Profile />}
+                    />
+                </Switch>
+            </BrowserRouter >
+        </AuthGlobalContext.Provider>
+    );
 }
+function HandleLogout({ setUser }) {
+    const history = useHistory();
+    React.useEffect(() => {
+
+        fetch("/logout", {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRFToken()
+            }
+        }).then(response => {
+            if (response.ok) {
+                console.log(response.status);
+                localStorage.removeItem('user');
+                setUser({ username: undefined, authenticated: false }); // updating the user state for navbar changes
+                history.push("/login");
+            }
+        }).catch(error => {
+            console.log("Error", error);
+        })
+    }, [history, setUser])
+    return null;
+}
+
+function ProfilePage({ user }) {
+    if (!user.authenticated) {
+        return (
+
+            <h1 className="main-heading"> You are not logged in! </h1>
+        )
+    }
+    const [profileDetails, setProfileDetails] = useState({ 'username': '', 'profilePicUrl': '', 'followers': undefined, 'following': undefined })
+
+    useEffect(() => {
+        // fetch users profile detials here  
+        const url = new URL('/profile', window.location.origin);
+        url.searchParams('userID', `${user.userId}`);
+        fetch(url, {
+            method: GET,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRFToken()
+            }
+        }).then(response)
+    })
+    return (
+        <div className="profile-container justify-content-center align-items-center mt-5">
+            <div className=" text-center mt-4">
+
+                <div className="mt-3">
+                    <img src="https://i.imgur.com/JgYD2nQ.jpg" className="rounded-circle" width="160" />
+                </div>
+
+                <div className="mt-3 text-center">
+                    <h4 className="mb-2">{user.username}</h4>
+
+                    {/* This button is conditional, means it should'nt apear if user is viewing own profile 
+                    and follow OR unfollow accordingly*/}
+                    <button className=" btn-prim follow shape-round col-2">Follow</button>
+                    <div className="justify-content-center  mt-4 px-4 row">
+                        <div>
+                            <h6 className="mb-0 col-6">Followers</h6>
+                            <span>8,797</span>
+
+                        </div>
+                        <div>
+                            <h6 className="mb-0 col-6">Following</h6>
+                            <span>142</span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    )
+
+}
+
+// user is undefined means fetch all posts, not specific to any user
+function AllPosts({ user = undefined }) { // providing default props
+
+    const [posts, setPosts] = useState([]);
+    const [comments, setComments] = useState([]); // all comments 
+    const [comment, setComment] = useState('');
+    const [like, setLike] = useState({ 'type': '', 'id': undefined });
+    const [lastTimeStamp, setLastTimeStamp] = useState('');
+
+    const updateComment = (e) => {
+        setComment(e.target.value);
+    }
+
+    function updateLikes(id, type = 'post') {
+        let operation = 'update_post_likes';
+        if (type !== 'post') {
+            operation = 'update_comment_likes';
+        }
+
+        // make database update first
+        fetch('/feed', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRFToken()
+            },
+
+            body: JSON.stringify({
+                'operation': operation,
+                'id': id // +1 to this comment likes in the database
+            })
+
+        }).then(response => {
+            if (response.ok) { // if the update was successfull in the db than change the posts state
+                setLike({ 'type': type, 'id': id });
+                console.log('likes updated successfully');
+            }
+            else {
+                throw new Error(`something went wrong ${response.status}`)
+            }
+        }).catch(e => {
+            console.log(e);
+        })
+        setLike({});
+    }
+
+    function updatePosts(parameter) {
+        const posts = [];
+        const comments = {};
+
+        parameter.forEach(post => {
+            posts.push({
+                id: post.id,
+                username: post.username,
+                profile_pic_url: post.profile_pic_url,
+                title: post.title,
+                body: post.body,
+                timestamp: post.timestamp,
+                likes: post.likes,
+                comment_count: post.comment_count
+
+            });
+
+            comments[post.id] = post.post_comments;
+        });
+
+        setPosts(posts);
+        setComments(comments);
+    }
+
+    function addComment(post_id) {
+        // make database update first
+        fetch('/feed', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRFToken()
+            },
+            body: JSON.stringify({
+                'operation': 'new_comment',
+                'post_id': post_id,
+                'comment_body': comment // Use the `comment` from state
+            })
+
+        }).then(response => {
+            if (response.ok) {
+                console.log("comment posted sucessfully");
+                // Clear the comment box after submission
+            } else {
+                throw new Error(`something went wrong ${response.status}`);
+            }
+        }).catch(e => {
+            console.log(e);
+        });
+        setComment('');
+    }
+
+    // initial fetch request to the server
+    React.useEffect(() => {
+        const url = new URL('/feed', window.location.origin); // or another base URL
+        url.searchParams.append('category', user ? user.userId : 'all');
+        fetch(url,
+            {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRFToken()
+                }
+            }).then(response => {
+                if (!response.ok) throw new Error(response.status);
+                return response.json();
+            }).then(data => {
+                // call update posts here 
+                updatePosts(data.posts);
+            }).catch(e => {
+                console.log(e);
+            })
+    }, [comment, like])
+
+    return (
+        <>
+            <div className='text-center' >
+                {/* generating dynamic HTML for the posts */}
+                {posts.length === 0 ? (
+                    <div className="main-heading">Feed is empty</div>
+                ) : (
+                    posts.map((post, index) => (
+
+                        <div key={index} className="profile-container shape-round text-center mt-5" >
+                            {/* user/poster profile information */}
+                            <div className="d-flex mb-3 shape-round align-items-center">
+                                <a href="">
+                                    <img
+                                        src={post.profile_pic_url}
+                                        className="border ml-1 mt-1 rounded-circle profile-pic-height me-2"
+                                        alt="Avatar"
+                                    />
+                                </a>
+
+                                <div className="d-flex justify-content-between w-100">
+                                    <a href="#" className="text-color-cream ml-3 me-2">
+                                        {post['username']}
+                                    </a>
+                                    <p className="text-muted mb-0 mr-3 text-end">
+                                        {post['timestamp']}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="text-left ml-4 mb-4 text-color-cream" >
+                                <h4>
+                                    {post.title}
+                                </h4>
+                            </div>
+
+                            <div className="text-left ml-4 text-color-cream">
+                                {post.body}  {post.profile_pic_url}
+                            </div>
+
+                            <div className="card-body ">
+                                <div className="d-flex justify-content-between text-center border-top mb-4">
+                                    {/* like update button */}
+                                    <a
+                                        type="button"
+                                        data-mdb-button-init
+                                        data-mdb-ripple-init
+                                        onClick={() => updateLikes(post.id, 'post')}
+                                        className="btn btn-link text-color-cream btn-lg"
+                                        data-mdb-ripple-color="dark"
+                                    >
+                                        <i className="fas fa-heart text-danger"></i> {post.likes}
+                                    </a>
+                                    {/* update comments this doesnt work, just here for aesthetics */}
+                                    <a
+                                        type="button"
+                                        data-mdb-button-init
+                                        data-mdb-ripple-init
+                                        className="btn btn-link text-color-cream btn-lg"
+                                        data-mdb-ripple-color="dark"
+                                    >
+                                        <i className="fas fa-comment-alt text-color-cream"></i> {post.comment_count}
+                                    </a>
+
+                                    <a
+                                        type="button"
+                                        data-mdb-button-init
+                                        data-mdb-ripple-init
+                                        className="btn btn-link btn-lg"
+                                        data-mdb-ripple-color="dark"
+                                    >
+                                        <i className="fas fa-share text-color-cream me-2"></i>
+                                    </a>
+                                </div>
+
+                                {/* Comment section starts from here */}
+                                {/* comment input box */}
+                                <div className="d-flex mr-3">
+                                    <a href="">
+                                        <img
+                                            src={post.profile_pic_url}
+                                            className="border profile-pic-height rounded-circle me-2"
+                                            alt="Avatar"
+                                        />
+                                    </a>
+                                    <div className=" w-100 ml-2 text-left">
+
+                                        <textarea
+                                            id='comment_body'
+                                            value={comment}
+                                            onChange={updateComment}
+                                            className="comment-box"
+                                            rows="2"
+                                            placeholder="Write a comment"
+                                        />
+
+                                        <a href="#" onClick={() => addComment(post.id)} className="text-color-cream  me-2">
+                                            post comment
+                                        </a>
+                                    </div>
+                                </div>
+
+                                {/* comments */}
+                                {/* REFACTOR THIS PART */}
+                                {/* for each commentS */}
+
+                                <div className="mt-5">
+
+                                    {comments[post.id]?.map((comnt, idx) => (
+                                        <div key={idx} className="d-flex mr-3 mt-2 border-bottom">
+                                            <a href="">
+                                                <img
+                                                    src={post.profile_pic_url}
+                                                    className="border profile-pic-height rounded-circle me-2"
+                                                    alt="Avatar"
+                                                />
+                                            </a>
+
+                                            <div className="w-100 ml-2 text-left">
+                                                <div className="comment-body" rows="2">
+                                                    {comnt.comment_body}
+                                                </div>
+                                                <a
+                                                    type="button"
+                                                    onClick={() => updateLikes(comnt.id, 'comment')}
+                                                    data-mdb-button-init
+                                                    data-mdb-ripple-init
+                                                    className="btn btn-link text-color-cream btn-sm"
+                                                    data-mdb-ripple-color="dark"
+                                                >
+                                                    <i className="fas fa-heart text-danger"></i> {comnt.likes}
+                                                </a>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                    ))
+                )}
+                <div className="d-flex justify-content-center mt-5 align-items-center ">
+                    <a className="page-link mr-4 col-1 shape-round" href="#">Previous</a>
+                    <a className="page-link shape-round col-1" href="#">Next</a>
+                </div>
+            </div>
+        </>
+    );
+}
+ReactDOM.render(<App />, document.querySelector("#root"));

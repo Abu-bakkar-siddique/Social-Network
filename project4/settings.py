@@ -27,9 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
 # Application definition
-
 INSTALLED_APPS = [
     'network',
     'django.contrib.admin',
@@ -51,7 +49,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'project4.urls'
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

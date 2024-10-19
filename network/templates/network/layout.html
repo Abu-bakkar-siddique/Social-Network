@@ -7,66 +7,19 @@
   <title>{% block title %}Social Network{% endblock %}</title>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
     integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
   <link href="{% static 'network/styles.css' %}" rel="stylesheet" />
 
   <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-router-dom@5/umd/react-router-dom.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <script type="text/babel" src="{% static 'network/js.js' %}"></script>
 </head>
 
 <body>
-
-  <div class="topnav">
-    <div class="search-container ">
-      <input type="text" class="search-input shape-round col-10 " placeholder="Search..." />
-      <button class="btn search-button shape-round col-2">search</button>
-    </div>
-  </div>
-
-  <div>
-    <nav class="sidebar">
-      <a class="navbar-brand" href="#">Network</a>
-
-      <ul class="navbar-nav">
-        {% if user.is_authenticated %}
-        <li class="nav-item">
-          <a class="nav-link" href="#"><strong>{{ user.username }}</strong></a>
-        </li>
-        {% endif %}
-
-        <li class="nav-item">
-          <a id="feed-l" class="nav-link " href="{% url 'index' %}">All Posts</a>
-        </li>
-        {% if user.is_authenticated %}
-
-        <li class="nav-item"></li>
-        <a id="new-post-l" class="nav-link" href="#">Create Post</a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link" href="#">Following</a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'logout' %}">Log Out</a>
-        </li>
-
-        {% else %}
-        <li class="nav-item">
-          <a class="nav-link " href="{% url 'login' %}">Log In</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'register' %}">Register</a>
-        </li>
-
-        {% endif %}
-      </ul>
-    </nav>
-  </div>
-
-  <div class="body">{% block body %} {% endblock %}</div>
+  {% block body %} {% endblock %}
+  <script type="text/babel" src="{% static 'network/js.js' %}"></script>
 </body>
 
 </html>
