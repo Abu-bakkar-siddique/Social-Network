@@ -1,7 +1,9 @@
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.core.paginator import Paginator
 from django.shortcuts import render
+from django.core.serializers import serialize
 from django.db.models import Count
 from django.urls import reverse
 from .models import *
@@ -102,33 +104,41 @@ def feed (request) :
     """ This is to be altered, to add comment section"""
     # initial request.
     if request.method == "GET":
-
         category = request.GET.get('category')
+        page = request.GET.get('page')
+    
+        if page is None:
+            print('page is None')
+        else :
+            print(f"{type(page)} : {page}")
         posts = None
-        all_posts = []
-
+        all_posts = []  
+        
         # checking c ategory
+        if category is None:
+            print('###### None ######')
+        else :
+            print(f"{type(category)} {category}")
         if category == 'all':
-            posts = Post.objects.all()
+            posts = Post.objects.all()  
+            
         else :
             posts = Post.objects.filter(user=User.objects.get(pk=int(category))).order_by('-timestamp')
         
+    
         # returning empty all_posts array if no posts at all  
         if not posts: return JsonResponse({"posts" : all_posts}, status = 200) 
         posts = posts.annotate(post_likes = Count('user_likes'))
+        posts = Paginator(posts, 10)
+        posts = posts.get_page(int(page))
 
-        for post in posts:
-            check = True
-            comments = []
+        for post in posts.object_list:
+            comments = []   
             comment_count = 0
 
-            try :
-                all_comments = Comment.objects.all().filter(post = post)
-            except Comment.DoesNotExist :
-                check = False
+            all_comments = Comment.objects.filter(post = post)
 
-            # if comments exist
-            if check :            
+            if all_comments.exists():
                 all_comments = all_comments.annotate(comment_likes = Count('user_likes'))
                 comment_count = all_comments.count()
                 for comment in all_comments:
@@ -140,7 +150,7 @@ def feed (request) :
                         'comment_post' : comment.post.pk
                     }
                     comments.append(c)
-
+                    
             p = {
                 'id' : post.pk,
                 'username': post.user.username,
@@ -154,7 +164,8 @@ def feed (request) :
                 'actual_timestamp' : post.timestamp
             }
 
-            all_posts.append(p)    
+            all_posts.append(p)
+
         return JsonResponse({"posts" : all_posts}, status = 200) # success
 
     # if post request => update likes

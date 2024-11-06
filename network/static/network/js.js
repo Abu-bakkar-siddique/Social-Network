@@ -92,7 +92,7 @@ function FixedNavbars({ user }) {
 
             <div>
                 <nav className="sidebar">
-                    <a className="navbar-brand" to="/">Network</a>
+                    <a className="navbar-brand" to="/">Word Flow</a>
 
                     <ul className="navbar-nav">
                         {user.authenticated && (
@@ -490,7 +490,9 @@ function AllPosts({ user = undefined }) { // providing default props
     const [comments, setComments] = useState([]); // all comments 
     const [comment, setComment] = useState('');
     const [like, setLike] = useState({ 'type': '', 'id': undefined });
-    const [lastTimeStamp, setLastTimeStamp] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageRequest, setPageRequest] = useState(false);
+    const [commentPost, setCommentPost] = useState(0)
 
     const updateComment = (e) => {
         setComment(e.target.value);
@@ -514,7 +516,6 @@ function AllPosts({ user = undefined }) { // providing default props
                 'operation': operation,
                 'id': id // +1 to this comment likes in the database
             })
-
         }).then(response => {
             if (response.ok) { // if the update was successfull in the db than change the posts state
                 setLike({ 'type': type, 'id': id });
@@ -527,6 +528,7 @@ function AllPosts({ user = undefined }) { // providing default props
             console.log(e);
         })
         setLike({});
+        setPageRequest(!pageRequest);
     }
 
     function updatePosts(parameter) {
@@ -553,6 +555,15 @@ function AllPosts({ user = undefined }) { // providing default props
         setComments(comments);
     }
 
+    function togglePrevious() {
+        setCurrentPage(currentPage - 1);
+        setTimeout(() => setPageRequest(pageRequest + 1));
+    }
+    function toggleNext() {
+        setCurrentPage(currentPage + 1);
+        setTimeout(() => setPageRequest(pageRequest + 1));
+    }
+
     function addComment(post_id) {
         // make database update first
         fetch('/feed', {
@@ -569,186 +580,195 @@ function AllPosts({ user = undefined }) { // providing default props
 
         }).then(response => {
             if (response.ok) {
+                setCommentPost(commentPost + 1);
                 console.log("comment posted sucessfully");
+                setComment('');
                 // Clear the comment box after submission
             } else {
+                setComment('');
                 throw new Error(`something went wrong ${response.status}`);
             }
         }).catch(e => {
             console.log(e);
         });
-        setComment('');
     }
 
-    // initial fetch request to the server
     React.useEffect(() => {
         const url = new URL('/feed', window.location.origin); // or another base URL
         url.searchParams.append('category', user ? user.userId : 'all');
-        fetch(url,
-            {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': CSRFToken()
-                }
-            }).then(response => {
-                if (!response.ok) throw new Error(response.status);
-                return response.json();
-            }).then(data => {
-                // call update posts here 
-                updatePosts(data.posts);
-            }).catch(e => {
-                console.log(e);
-            })
-    }, [comment, like])
+        url.searchParams.append('page', currentPage);
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRFToken(),
+            }
+        }).then(response => {
+            if (!response.ok) throw new Error(response.status);
+            return response.json();
+        }).then(data => {
+            // Call update posts here 
+            updatePosts(data.posts);
+        }).catch(e => {
+            console.log(e);
+        });
+    }, [like, pageRequest, commentPost]); // Dependencies
 
     return (
         <>
-            <div className='text-center' >
-                {/* generating dynamic HTML for the posts */}
-                {posts.length === 0 ? (
-                    <div className="main-heading">Feed is empty</div>
-                ) : (
-                    posts.map((post, index) => (
+            <div>
+                <div className='text-center'>
+                    {posts.length === 0 ? (
+                        <div className="main-heading">Feed is empty</div>
+                    ) : (
+                        posts.map((post, index) => (
 
-                        <div key={index} className="profile-container shape-round text-center mt-5" >
-                            {/* user/poster profile information */}
-                            <div className="d-flex mb-3 shape-round align-items-center">
-                                <a href="">
-                                    <img
-                                        src={post.profile_pic_url}
-                                        className="border ml-1 mt-1 rounded-circle profile-pic-height me-2"
-                                        alt="Avatar"
-                                    />
-                                </a>
-
-                                <div className="d-flex justify-content-between w-100">
-                                    <a href="#" className="text-color-cream ml-3 me-2">
-                                        {post['username']}
-                                    </a>
-                                    <p className="text-muted mb-0 mr-3 text-end">
-                                        {post['timestamp']}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="text-left ml-4 mb-4 text-color-cream" >
-                                <h4>
-                                    {post.title}
-                                </h4>
-                            </div>
-
-                            <div className="text-left ml-4 text-color-cream">
-                                {post.body}  {post.profile_pic_url}
-                            </div>
-
-                            <div className="card-body ">
-                                <div className="d-flex justify-content-between text-center border-top mb-4">
-                                    {/* like update button */}
-                                    <a
-                                        type="button"
-                                        data-mdb-button-init
-                                        data-mdb-ripple-init
-                                        onClick={() => updateLikes(post.id, 'post')}
-                                        className="btn btn-link text-color-cream btn-lg"
-                                        data-mdb-ripple-color="dark"
-                                    >
-                                        <i className="fas fa-heart text-danger"></i> {post.likes}
-                                    </a>
-                                    {/* update comments this doesnt work, just here for aesthetics */}
-                                    <a
-                                        type="button"
-                                        data-mdb-button-init
-                                        data-mdb-ripple-init
-                                        className="btn btn-link text-color-cream btn-lg"
-                                        data-mdb-ripple-color="dark"
-                                    >
-                                        <i className="fas fa-comment-alt text-color-cream"></i> {post.comment_count}
-                                    </a>
-
-                                    <a
-                                        type="button"
-                                        data-mdb-button-init
-                                        data-mdb-ripple-init
-                                        className="btn btn-link btn-lg"
-                                        data-mdb-ripple-color="dark"
-                                    >
-                                        <i className="fas fa-share text-color-cream me-2"></i>
-                                    </a>
-                                </div>
-
-                                {/* Comment section starts from here */}
-                                {/* comment input box */}
-                                <div className="d-flex mr-3">
+                            <div key={index} className="profile-container shape-round text-center mt-5" >
+                                {/* user/poster profile information */}
+                                <div className="d-flex mb-3 shape-round align-items-center">
                                     <a href="">
                                         <img
                                             src={post.profile_pic_url}
-                                            className="border profile-pic-height rounded-circle me-2"
+                                            className="border ml-1 mt-1 rounded-circle profile-pic-height me-2"
                                             alt="Avatar"
                                         />
                                     </a>
-                                    <div className=" w-100 ml-2 text-left">
 
-                                        <textarea
-                                            id='comment_body'
-                                            value={comment}
-                                            onChange={updateComment}
-                                            className="comment-box"
-                                            rows="2"
-                                            placeholder="Write a comment"
-                                        />
-
-                                        <a href="#" onClick={() => addComment(post.id)} className="text-color-cream  me-2">
-                                            post comment
+                                    <div className="d-flex justify-content-between w-100">
+                                        <a href="#" className="text-color-cream ml-3 me-2">
+                                            {post['username']}
                                         </a>
+                                        <p className="text-muted mb-0 mr-3 text-end">
+                                            {post['timestamp']}
+                                        </p>
                                     </div>
                                 </div>
 
-                                {/* comments */}
-                                {/* REFACTOR THIS PART */}
-                                {/* for each commentS */}
+                                <div className="text-left ml-4 mb-4 text-color-cream" >
+                                    <h4>
+                                        {post.title}
+                                    </h4>
+                                </div>
 
-                                <div className="mt-5">
+                                <div className="text-left ml-4 text-color-cream">
+                                    {post.body}  {post.profile_pic_url}
+                                </div>
 
-                                    {comments[post.id]?.map((comnt, idx) => (
-                                        <div key={idx} className="d-flex mr-3 mt-2 border-bottom">
-                                            <a href="">
-                                                <img
-                                                    src={post.profile_pic_url}
-                                                    className="border profile-pic-height rounded-circle me-2"
-                                                    alt="Avatar"
-                                                />
+                                <div className="card-body ">
+                                    <div className="d-flex justify-content-between text-center border-top mb-4">
+                                        {/* like update button */}
+                                        <a
+                                            type="button"
+                                            data-mdb-button-init
+                                            data-mdb-ripple-init
+                                            onClick={() => updateLikes(post.id, 'post')}
+                                            className="btn btn-link text-color-cream btn-lg"
+                                            data-mdb-ripple-color="dark"
+                                        >
+                                            <i className="fas fa-heart text-danger"></i> {post.likes}
+                                        </a>
+                                        {/* update comments this doesnt work, just here for aesthetics */}
+                                        <a
+                                            type="button"
+                                            data-mdb-button-init
+                                            data-mdb-ripple-init
+                                            className="btn btn-link text-color-cream btn-lg"
+                                            data-mdb-ripple-color="dark"
+                                        >
+                                            <i className="fas fa-comment-alt text-color-cream"></i> {post.comment_count}
+                                        </a>
+
+                                        <a
+                                            type="button"
+                                            data-mdb-button-init
+                                            data-mdb-ripple-init
+                                            className="btn btn-link btn-lg"
+                                            data-mdb-ripple-color="dark"
+                                        >
+                                            <i className="fas fa-share text-color-cream me-2"></i>
+                                        </a>
+                                    </div>
+
+                                    <div className="d-flex mr-3">
+                                        <a href="">
+                                            <img
+                                                src={post.profile_pic_url}
+                                                className="border profile-pic-height rounded-circle me-2"
+                                                alt="Avatar"
+                                            />
+                                        </a>
+                                        <div className=" w-100 ml-2 text-left">
+
+                                            <textarea
+                                                id='comment_body'
+                                                onChange={updateComment}
+                                                className="comment-box"
+                                                rows="2"
+                                                placeholder="Write a comment"
+                                            />
+
+                                            <a onClick={() => addComment(post.id)} className="text-color-cream  me-2">
+                                                post comment
                                             </a>
-
-                                            <div className="w-100 ml-2 text-left">
-                                                <div className="comment-body" rows="2">
-                                                    {comnt.comment_body}
-                                                </div>
-                                                <a
-                                                    type="button"
-                                                    onClick={() => updateLikes(comnt.id, 'comment')}
-                                                    data-mdb-button-init
-                                                    data-mdb-ripple-init
-                                                    className="btn btn-link text-color-cream btn-sm"
-                                                    data-mdb-ripple-color="dark"
-                                                >
-                                                    <i className="fas fa-heart text-danger"></i> {comnt.likes}
-                                                </a>
-                                            </div>
                                         </div>
-                                    ))}
+                                    </div>
+
+                                    <div className="mt-5">
+                                        {comments[post.id]?.map((comnt, idx) => (
+                                            <div key={idx} className="d-flex mr-3 mt-2 border-bottom">
+                                                <a href="">
+                                                    <img
+                                                        src={post.profile_pic_url}
+                                                        className="border profile-pic-height rounded-circle me-2"
+                                                        alt="Avatar"
+                                                    />
+                                                </a>
+
+                                                <div className="w-100 ml-2 text-left">
+                                                    <div className="comment-body" rows="2">
+                                                        {comnt.comment_body}
+                                                    </div>
+                                                    <a
+                                                        type="button"
+                                                        onClick={() => updateLikes(comnt.id, 'comment')}
+                                                        data-mdb-button-init
+                                                        data-mdb-ripple-init
+                                                        className="btn btn-link text-color-cream btn-sm"
+                                                        data-mdb-ripple-color="dark"
+                                                    >
+                                                        <i className="fas fa-heart text-danger"></i> {comnt.likes}
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        ))
+                    )}
+                    <div className="d-flex justify-content-center mt-3 align-items-center">
+                        {currentPage > 1 && (
+                            <button className="btn-prim mr-4 col-2 shape-round"
+                                onClick={() => togglePrevious()}
+                                disabled={currentPage <= 1}>
+                                Previous
+                            </button>
+                        )}
 
-                    ))
-                )}
-                <div className="d-flex justify-content-center mt-5 align-items-center ">
-                    <a className="page-link mr-4 col-1 shape-round" href="#">Previous</a>
-                    <a className="page-link shape-round col-1" href="#">Next</a>
+                        {posts.length >= 10 && (
+                            <button className="btn-prim shape-round col-2"
+                                onClick={() => toggleNext()}
+                                disabled={posts.length < 10}>
+                                Next
+                            </button>
+                        )}
+                    </div>
+
                 </div>
-            </div>
+            </div >
+
         </>
     );
 }
+
 ReactDOM.render(<App />, document.querySelector("#root"));
