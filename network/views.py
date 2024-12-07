@@ -12,16 +12,17 @@ import json
 def index(request):
     
     if request.META.get('Content-Type') == 'application/json':
-                
-        this_user = request.user 
+
+        this_user = request.user
         if this_user.is_authenticated:
             userInfo = {'username' : this_user.username, 'authenticated' : True}
             return JsonResponse(userInfo, status =200)
+
         else:
             userInfo = {'username' : None, 'authenticated' : False, 'userId': this_user.pk}
-            return JsonResponse(userInfo, status =210)
+            return JsonResponse(userInfo, status =401)
    
-    return render(request, "network/index.html", status=219)
+    return render(request, "network/index.html", status=200)
 
 def login_view(request):
     if request.method == "POST":
@@ -37,14 +38,14 @@ def login_view(request):
             return JsonResponse({'message': 'login successful'}, status = 200)
         else:
             return JsonResponse({"message" : "Invalid username and/or password."}, status = 401)
-    
+
 def logout_view(request):
     logout(request)
     return JsonResponse({'message' : 'logout successful'}, status = 200)
 
 def register(request):
     if request.method == "POST":
-        
+
         data = json.loads(request.body)
         username = data.get("username")
         password = data.get("password")
@@ -54,7 +55,7 @@ def register(request):
         # Ensure password matches confirmation
         if password != confirmation:
             return JsonResponse({"message": "Passwords must match."},status = 401)
-        
+
         # Attempt to create new user
         try:
             user = User.objects.create_user(username, email, password)

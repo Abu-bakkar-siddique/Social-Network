@@ -1,5 +1,6 @@
+const { useState, useEffect, createContext, useContext } = React;
 const { BrowserRouter, Route, Switch, Link, useHistory } = ReactRouterDOM;
-const { useState, useContext, createContext } = React;
+
 function CSRFToken() {
     const token = document.cookie
         .split('; ')
@@ -7,8 +8,8 @@ function CSRFToken() {
     return token ? decodeURIComponent(token.split('=')[1]) : null;
 }
 
+// Check
 function NewPost() {
-
     const [post, setPost] = React.useState({ title: '', body: '' });
 
     const submitPost = (event) => {
@@ -79,7 +80,7 @@ function NewPost() {
     );
 }
 
-
+// Check
 function FixedNavbars({ user }) {
     return (
         <>
@@ -138,6 +139,7 @@ function FixedNavbars({ user }) {
     );
 }
 
+// Check
 function handleErrorField(elements) {
     elements.forEach((id) => {
         document.getElementById(id).classList.remove('form-control-x');
@@ -145,7 +147,7 @@ function handleErrorField(elements) {
     })
 }
 
-
+//Check
 function Login({ setUser }) {
     const [credentials, setCredentials] = React.useState({ "username": '', "password": '' });
     const history = useHistory();
@@ -223,6 +225,8 @@ function Login({ setUser }) {
         </div>
     );
 }
+
+//Check
 function Register({ setUser }) {
     const [registerInfo, setRegisterInfo] = React.useState({
         "username_r": '',
@@ -324,16 +328,16 @@ function Register({ setUser }) {
     );
 }
 
+
+// LEFT OF HERE 
 let userAuthenticated = false;
 const AuthGlobalContext = createContext();
 function App() {
-
-    let userVar = localStorage.getItem('user'); // user stored in the local storage if they ever logged in previously
+    let userVar = localStorage.getItem('user');
     const [user, setUser] = React.useState(userVar ? JSON.parse(userVar) : { username: undefined, userId: undefined, authenticated: false });
 
     React.useEffect(() => {
-        // Fetch user authentication status
-
+        // Same authentication check as before
         if (!user.authenticated) {
             fetch("/", {
                 method: 'GET',
@@ -343,10 +347,10 @@ function App() {
                 }
             })
                 .then(response => {
-                    if (response.status === 219) {
+                    if (response.status === 200) {
                         return null;
                     }
-                    else if (response.status === 210) {
+                    else if (response.status === 401) {
                         console.log("invalid user");
                         return null
                     }
@@ -357,7 +361,6 @@ function App() {
                 })
                 .then(data => {
                     if (data) {
-
                         setUser({
                             username: data.username,
                             authenticated: data.authenticated,
@@ -375,33 +378,60 @@ function App() {
                 });
         }
     }, []);
+
     return (
         <AuthGlobalContext.Provider value={{ user, setUser }}>
-            < BrowserRouter >
+            <BrowserRouter>
                 <FixedNavbars user={user} />
                 <Switch>
-                    {/* also factor these urls on the server side to avoid 404 */}
+                    {/* Directly use component prop for most routes */}
+                    <Route exact path="/" component={() => <h1>Welcome to Network</h1>} />
                     <Route path="/create_post" component={NewPost} />
                     <Route path="/feed" component={AllPosts} />
-                    <Route path="/" exact component={() => <h1>Welcome to Network</h1>} />
+
+                    {/* Use render prop with explicit setUser prop */}
                     <Route
                         path="/login"
-                        render={(props) => <Login {...props} setUser={setUser} />}
+                        render={(props) => (
+                            <Login
+                                {...props}
+                                setUser={setUser}
+                            />
+                        )}
                     />
-                    <Route path="/logout"
-                        render={(props) => <HandleLogout {...props} setUser={setUser} HandleLogout />}
+                    <Route
+                        path="/register"
+                        render={(props) => (
+                            <Register
+                                {...props}
+                                setUser={setUser}
+                            />
+                        )}
                     />
-                    <Route path="/register"
-                        render={(props) => <Register {...props} setUser={setUser} Register />}
+                    <Route
+                        path="/logout"
+                        render={(props) => (
+                            <HandleLogout
+                                {...props}
+                                setUser={setUser}
+                            />
+                        )}
                     />
-                    <Route path="/profile"
-                        render={(props) => <ProfilePage  {...props} user={user} Profile />}
+                    <Route
+                        path="/profile"
+                        render={(props) => (
+                            <ProfilePage
+                                {...props}
+                                user={user}
+                            />
+                        )}
                     />
                 </Switch>
-            </BrowserRouter >
+            </BrowserRouter>
         </AuthGlobalContext.Provider>
     );
 }
+
 function HandleLogout({ setUser }) {
     const history = useHistory();
     React.useEffect(() => {
@@ -770,5 +800,4 @@ function AllPosts({ user = undefined }) { // providing default props
         </>
     );
 }
-
 ReactDOM.render(<App />, document.querySelector("#root"));

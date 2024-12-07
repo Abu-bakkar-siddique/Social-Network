@@ -14,9 +14,6 @@ WHERE I LEFT OFF:
     -> all functions review and testing 
     -> profilePage component
 
-    !!!!IMPORTANT:
-        test the feed api endpoint, complete the feed api
-
 ######## LESSONS ########:
     React hooks must always be called in the same order, regardless of conditions. means can't place the 
     useEffect Hook inside a conditional.
