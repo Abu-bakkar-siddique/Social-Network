@@ -1,5 +1,6 @@
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
+from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.core.paginator import Paginator
 from django.shortcuts import render
@@ -15,7 +16,7 @@ def index(request):
 
         this_user = request.user
         if this_user.is_authenticated:
-            userInfo = {'username' : this_user.username, 'authenticated' : True}
+            userInfo = {'username' : this_user.username, 'authenticated' : True, 'userId' : this_user.pk}
             return JsonResponse(userInfo, status =200)
 
         else:
@@ -23,7 +24,7 @@ def index(request):
             return JsonResponse(userInfo, status =401)
    
     return render(request, "network/index.html", status=200)
-
+@csrf_exempt
 def login_view(request):
     if request.method == "POST":
         
@@ -35,7 +36,7 @@ def login_view(request):
 
         if user is not None:
             login(request, user)
-            return JsonResponse({'message': 'login successful'}, status = 200)
+            return JsonResponse({'message': 'login successful', 'userId' : request.user.pk}, status = 200)
         else:
             return JsonResponse({"message" : "Invalid username and/or password."}, status = 401)
 
@@ -43,6 +44,7 @@ def logout_view(request):
     logout(request)
     return JsonResponse({'message' : 'logout successful'}, status = 200)
 
+@csrf_exempt
 def register(request):
     if request.method == "POST":
 
@@ -66,8 +68,6 @@ def register(request):
         login(request, user)
         return  JsonResponse({"message": "Registeration successful."},status = 200)
 
-    else:
-        return render(request, "network/register.html")
 
 def create_post(request):
     if request.method == 'POST':
@@ -87,22 +87,40 @@ def create_post(request):
         return JsonResponse({'message': 'Post created successfully', 'post_id': post.id}, status=200)
     return JsonResponse({'error': 'Invalid request method'}, status=405)  # Method not allowed
 
+@csrf_exempt
 def profile(request):
     if request.method != 'GET':
-        return JsonResponse({'messagee': 'this endpoint only expects get request'}, status = 401)    
-    this_user = User.objects.get(pk = request.get('userID'))
-    
-    profile_details = {
-        'username': this_user.username, 
-        'profilePicUrl': this_user.profile_picture.url,
-        'followers' : this_user.followers,
-        'following' : this_user.following,
-        
-        }
-    return JsonResponse(profile_details, status = 200)
+        return JsonResponse({'message': 'This endpoint only expects GET requests'}, status=403)
 
+    # Safely retrieve the userID from the GET parameters
+    user_id = request.GET.get('userID')
+
+    print(user_id)
+    if not user_id:
+        return JsonResponse({'message': 'Missing userID in request parameters'}, status=400)
+
+    try:
+        this_user = User.objects.get(pk=user_id)
+        print(this_user)
+
+        # Prepare the profile details
+        profile_details = {
+            'username': this_user.username,
+            # 'profilePicUrl': this_user.profile_picture.url,
+            'followers': this_user.followers, 
+            'following': this_user.following,  
+        }
+
+        return JsonResponse(profile_details, status=200)
+
+    except ObjectDoesNotExist:
+        return JsonResponse({'message': 'User not found'}, status=404)
+
+    except Exception as e:
+        return JsonResponse({'message': f'An unexpected error occurred: {str(e)}'}, status=500)
 def feed (request) :    
     """ This is to be altered, to add comment section"""
+    
     # initial request.
     if request.method == "GET":
         category = request.GET.get('category')

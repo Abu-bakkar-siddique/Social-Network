@@ -81,7 +81,8 @@ function NewPost() {
 }
 
 // Check
-function FixedNavbars({ user }) {
+function FixedNavbars() {
+    const { user } = useContext(AuthGlobalContext)
     return (
         <>
             <div className="topnav">
@@ -193,10 +194,11 @@ function Login({ setUser }) {
         }).then(data => {
 
             // set the user to be authenticated
-            setUser({ username: credentials.username, authenticated: true }); // updating the user state for navbar changes 
+            setUser({ username: credentials.username, userId: data.userId, authenticated: true }); // updating the user state for navbar changes 
             localStorage.setItem("user", JSON.stringify({
                 username: credentials.username,
-                authenticated: true
+                authenticated: true,
+                userId: data.userId
             }
             ));
             history.push("/");
@@ -227,7 +229,8 @@ function Login({ setUser }) {
 }
 
 //Check
-function Register({ setUser }) {
+function Register() {
+    const { setUser } = useContext(AuthGlobalContext);
     const [registerInfo, setRegisterInfo] = React.useState({
         "username_r": '',
         'email_r': '',
@@ -274,6 +277,7 @@ function Register({ setUser }) {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': CSRFToken()
             },
+            credentials: 'include',
             body: JSON.stringify({
                 "username": registerInfo.username_r,
                 "password": registerInfo.password_r,
@@ -328,11 +332,12 @@ function Register({ setUser }) {
     );
 }
 
-
 // LEFT OF HERE 
 let userAuthenticated = false;
 const AuthGlobalContext = createContext();
+
 function App() {
+
     let userVar = localStorage.getItem('user');
     const [user, setUser] = React.useState(userVar ? JSON.parse(userVar) : { username: undefined, userId: undefined, authenticated: false });
 
@@ -369,6 +374,7 @@ function App() {
 
                         localStorage.setItem('user', JSON.stringify({
                             username: data.username,
+                            userId: data.userId,
                             authenticated: data.authenticated
                         }));
                     }
@@ -380,12 +386,14 @@ function App() {
     }, []);
 
     return (
+
         <AuthGlobalContext.Provider value={{ user, setUser }}>
             <BrowserRouter>
-                <FixedNavbars user={user} />
+                <FixedNavbars />
                 <Switch>
                     {/* Directly use component prop for most routes */}
-                    <Route exact path="/" component={() => <h1>Welcome to Network</h1>} />
+
+                    <Route exact path="/" component={AllPosts} />
                     <Route path="/create_post" component={NewPost} />
                     <Route path="/feed" component={AllPosts} />
 
@@ -399,6 +407,7 @@ function App() {
                             />
                         )}
                     />
+
                     <Route
                         path="/register"
                         render={(props) => (
@@ -408,6 +417,7 @@ function App() {
                             />
                         )}
                     />
+
                     <Route
                         path="/logout"
                         render={(props) => (
@@ -417,6 +427,7 @@ function App() {
                             />
                         )}
                     />
+
                     <Route
                         path="/profile"
                         render={(props) => (
@@ -426,6 +437,7 @@ function App() {
                             />
                         )}
                     />
+
                 </Switch>
             </BrowserRouter>
         </AuthGlobalContext.Provider>
@@ -463,30 +475,55 @@ function ProfilePage({ user }) {
             <h1 className="main-heading"> You are not logged in! </h1>
         )
     }
-    const [profileDetails, setProfileDetails] = useState({ 'username': '', 'profilePicUrl': '', 'followers': undefined, 'following': undefined })
+
+    const [profileDetails, setProfileDetails] = useState({ 'username': '', 'followers': undefined, 'following': undefined })
 
     useEffect(() => {
-        // fetch users profile detials here  
+        // fetch users profile details here  
         const url = new URL('/profile', window.location.origin);
-        url.searchParams('userID', `${user.userId}`);
+        url.searchParams.append('userID', user.userId);
         fetch(url, {
-            method: GET,
+            method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRFToken': CSRFToken()
             }
-        }).then(response)
-    })
+        }).then(response => {
+            if (response.ok) {
+
+                console.log(`yess ${response.status}`);
+                console.log(response);
+                return response.json();
+            }
+            else {
+                console.log(`someting went wrong! + ${response.status()}`);
+                throw new Error(`HTTP response error ${response.status}`);
+            }
+        }).then(profileData => {
+            console.log("Fetched data:", profileData);
+            try {
+                setProfileDetails({
+                    username: profileData.username,
+                    // profilePicUrl: profileData.profilePicUrl,
+                    followers: profileData.followers,
+                    following: profileData.following
+                });
+            } catch (err) {
+                console.error("Error setting state:", err);
+                throw err; // Ensures the catch block is hit
+            }
+        });
+    }, []);
     return (
+
         <div className="profile-container justify-content-center align-items-center mt-5">
             <div className=" text-center mt-4">
-
                 <div className="mt-3">
                     <img src="https://i.imgur.com/JgYD2nQ.jpg" className="rounded-circle" width="160" />
                 </div>
 
                 <div className="mt-3 text-center">
-                    <h4 className="mb-2">{user.username}</h4>
+                    <h4 className="mb-2">{profileDetails.username}</h4>
 
                     {/* This button is conditional, means it should'nt apear if user is viewing own profile 
                     and follow OR unfollow accordingly*/}
@@ -501,16 +538,11 @@ function ProfilePage({ user }) {
                             <h6 className="mb-0 col-6">Following</h6>
                             <span>142</span>
                         </div>
-
                     </div>
-
                 </div>
-
             </div>
-
         </div>
     )
-
 }
 
 // user is undefined means fetch all posts, not specific to any user
@@ -541,7 +573,6 @@ function AllPosts({ user = undefined }) { // providing default props
                 'Content-Type': 'application/json',
                 'X-CSRFToken': CSRFToken()
             },
-
             body: JSON.stringify({
                 'operation': operation,
                 'id': id // +1 to this comment likes in the database
@@ -575,7 +606,6 @@ function AllPosts({ user = undefined }) { // providing default props
                 timestamp: post.timestamp,
                 likes: post.likes,
                 comment_count: post.comment_count
-
             });
 
             comments[post.id] = post.post_comments;
@@ -596,6 +626,7 @@ function AllPosts({ user = undefined }) { // providing default props
 
     function addComment(post_id) {
         // make database update first
+        if (!comment) return null;
         fetch('/feed', {
             method: 'POST',
             headers: {
