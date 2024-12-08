@@ -476,7 +476,7 @@ function ProfilePage({ user }) {
         )
     }
 
-    const [profileDetails, setProfileDetails] = useState({ 'username': '', 'followers': undefined, 'following': undefined })
+    const [profileDetails, setProfileDetails] = useState({ 'username': '', 'followers': undefined, 'following': undefined, 'profilePicUrl': '' })
 
     useEffect(() => {
         // fetch users profile details here  
@@ -500,11 +500,10 @@ function ProfilePage({ user }) {
                 throw new Error(`HTTP response error ${response.status}`);
             }
         }).then(profileData => {
-            console.log("Fetched data:", profileData);
             try {
                 setProfileDetails({
                     username: profileData.username,
-                    // profilePicUrl: profileData.profilePicUrl,
+                    profilePicUrl: profileData.profilePicUrl,
                     followers: profileData.followers,
                     following: profileData.following
                 });
@@ -531,12 +530,12 @@ function ProfilePage({ user }) {
                     <div className="justify-content-center  mt-4 px-4 row">
                         <div>
                             <h6 className="mb-0 col-6">Followers</h6>
-                            <span>8,797</span>
+                            <span>{profileDetails.followers}</span>
 
                         </div>
                         <div>
                             <h6 className="mb-0 col-6">Following</h6>
-                            <span>142</span>
+                            <span>{profileDetails.following}</span>
                         </div>
                     </div>
                 </div>

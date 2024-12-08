@@ -106,7 +106,7 @@ def profile(request):
         # Prepare the profile details
         profile_details = {
             'username': this_user.username,
-            # 'profilePicUrl': this_user.profile_picture.url,
+            'profilePicUrl': this_user.profile_picture.url,
             'followers': this_user.followers, 
             'following': this_user.following,  
         }
