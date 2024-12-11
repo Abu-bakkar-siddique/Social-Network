@@ -117,7 +117,7 @@ def profile(request):
         }
 
         return JsonResponse(profile_details, status=200)
-        
+
     except ObjectDoesNotExist:
         return JsonResponse({'message': 'User not found'}, status=404)
 
@@ -125,7 +125,7 @@ def profile(request):
         return JsonResponse({'message': f'An unexpected error occurred: {str(e)}'}, status=500)
 
 def feed (request) :    
-    
+
     # initial request.
     if request.method == "GET":
         category = request.GET.get('category')

@@ -399,10 +399,7 @@ function App() {
                     <Route
                         exact path="/"
                         render={(props) => (
-                            // <ProfilePage
-                            //     {...props}
-                            //     user={user}
-                            // />
+
                             <AllPosts
                                 {...props}
                                 user_id={undefined}
@@ -455,7 +452,7 @@ function App() {
                         render={(props) => (
                             <ProfilePage
                                 {...props}
-                                user={user}
+                                user={user} usetUser={setUser}
                             />
                         )}
                     />
@@ -489,6 +486,7 @@ function HandleLogout({ setUser }) {
     }, [history, setUser])
     return null;
 }
+
 
 function ProfilePage({ user }) {
 
@@ -637,14 +635,14 @@ function ProfilePage({ user }) {
                 </div>
             </div>
             <div className="mt-3">
-                <AllPosts user_id={user.userId} />
+                <AllPosts user={user} profileDetails={profileDetails} />
             </div>
         </>
     )
 }
 
-// user is undefined means fetch all posts, not specific to any user
-function AllPosts({ user_id = undefined }) { // providing default props
+// // user is undefined means fetch all posts, not specific to any user
+function AllPosts({ user = undefined }) { // providing default props
 
     const [posts, setPosts] = useState([]); // all posts
     const [comments, setComments] = useState([]); // all comments 
@@ -696,6 +694,7 @@ function AllPosts({ user_id = undefined }) { // providing default props
 
         parameter.forEach(post => {
             console.log(post.timestamp);
+
             posts.push({
                 id: post.id,
                 username: post.username,
@@ -754,8 +753,9 @@ function AllPosts({ user_id = undefined }) { // providing default props
     }
 
     React.useEffect(() => {
+
         const url = new URL('/feed', window.location.origin); // or another base URL
-        url.searchParams.append('category', user_id ? user_id : 'all');
+        url.searchParams.append('category', user ? user.userId : 'all');
         url.searchParams.append('page', currentPage);
         fetch(url, {
             method: 'GET',
@@ -772,7 +772,7 @@ function AllPosts({ user_id = undefined }) { // providing default props
         }).catch(e => {
             console.log(e);
         });
-    }, [like, pageRequest, commentPost]); // Dependencies
+    }, [like, pageRequest, commentPost, user]); // Dependencies
 
     return (
         <>
