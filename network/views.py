@@ -9,9 +9,10 @@ from django.db.models import Count
 from django.urls import reverse
 from .models import *
 import json
+import time 
 
 def index(request):
-    
+
     if request.META.get('Content-Type') == 'application/json':
 
         this_user = request.user
@@ -22,7 +23,7 @@ def index(request):
         else:
             userInfo = {'username' : None, 'authenticated' : False, 'userId': this_user.pk}
             return JsonResponse(userInfo, status =401)
-   
+    # print(request.user.pk)
     return render(request, "network/index.html", status=200)
 @csrf_exempt
 def login_view(request):
@@ -89,26 +90,31 @@ def create_post(request):
 
 @csrf_exempt
 def profile(request):
-    if request.method != 'GET':
-        return JsonResponse({'message': 'This endpoint only expects GET requests'}, status=403)
 
+    # process POST request
+    if request.method == 'POST' and request.FILES.get('profile_pic'):
+        profile_pic = request.FILES['profile_pic']
+        user = User.objects.get(pk = request.user.pk)
+        user.profile_picture = profile_pic
+        user.save()
+        return JsonResponse({'message' : 'Profile picture updated'}, status = 200)
+
+    # process GET request
     # Safely retrieve the userID from the GET parameters
     user_id = request.GET.get('userID')
-
-    print(user_id)
     if not user_id:
         return JsonResponse({'message': 'Missing userID in request parameters'}, status=400)
 
     try:
         this_user = User.objects.get(pk=user_id)
-        print(this_user)
-
+    
         # Prepare the profile details
         profile_details = {
             'username': this_user.username,
-            'profilePicUrl': this_user.profile_picture.url,
+            'profilePicUrl': request.build_absolute_uri(this_user.profile_picture.url),
             'followers': this_user.followers, 
             'following': this_user.following,  
+            'self_profile' : int(request.user.pk) == int(user_id)
         }
 
         return JsonResponse(profile_details, status=200)
@@ -118,8 +124,8 @@ def profile(request):
 
     except Exception as e:
         return JsonResponse({'message': f'An unexpected error occurred: {str(e)}'}, status=500)
+
 def feed (request) :    
-    """ This is to be altered, to add comment section"""
     
     # initial request.
     if request.method == "GET":
@@ -139,14 +145,12 @@ def feed (request) :
         else :
             print(f"{type(category)} {category}")
         if category == 'all':
-            posts = Post.objects.all()  
-            
+            posts = Post.objects.all().order_by('-timestamp')
         else :
             posts = Post.objects.filter(user=User.objects.get(pk=int(category))).order_by('-timestamp')
-        
     
         # returning empty all_posts array if no posts at all  
-        if not posts: return JsonResponse({"posts" : all_posts}, status = 200) 
+        if not posts: return JsonResponse({"posts" : all_posts}, status = 200)
         posts = posts.annotate(post_likes = Count('user_likes'))
         posts = Paginator(posts, 10)
         posts = posts.get_page(int(page))
@@ -154,7 +158,6 @@ def feed (request) :
         for post in posts.object_list:
             comments = []   
             comment_count = 0
-
             all_comments = Comment.objects.filter(post = post)
 
             if all_comments.exists():
@@ -169,7 +172,7 @@ def feed (request) :
                         'comment_post' : comment.post.pk
                     }
                     comments.append(c)
-                    
+                          
             p = {
                 'id' : post.pk,
                 'username': post.user.username,
@@ -187,42 +190,43 @@ def feed (request) :
 
         return JsonResponse({"posts" : all_posts}, status = 200) # success
 
-    # if post request => update likes
-    body = json.loads(request.body)
-    id = None
-    operation = body.get('operation') 
+    else :
+        time.sleep(1)
+        # if post request => update likes
+        body = json.loads(request.body)
+        id = None
+        operation = body.get('operation') 
 
-    if operation == 'update_post_likes': # user liked the this post 
-        
-        id = body.get('id')
+        if operation == 'update_post_likes': # user liked the this post 
 
-        this_post = Post.objects.get(pk = id)
+            id = body.get('id')
 
-        if this_post.user_likes.filter(id=request.user.id).exists():
-            # Remove the like
-            this_post.user_likes.remove(request.user)
-        else:
-            # Add the like
-            this_post.user_likes.add(request.user)
+            this_post = Post.objects.get(pk = id)
 
-    elif operation == 'update_comment_likes': # user liked the this post 
-        id = body.get('id')    
-        this_comment = Comment.objects.get(pk = int(id))
+            if this_post.user_likes.filter(id=request.user.id).exists():
+                # Remove the like
+                this_post.user_likes.remove(request.user)
+            else:
+                # Add the like
+                this_post.user_likes.add(request.user)
 
-        if this_comment.user_likes.filter(id=request.user.id).exists():
-            # Remove the like
-            this_comment.user_likes.remove(request.user)
-        else:
-            # Add the like
-            this_comment.user_likes.add(request.user)
+        elif operation == 'update_comment_likes': # user liked the this post 
+            id = body.get('id')    
+            this_comment = Comment.objects.get(pk = int(id))
 
- 
-    elif operation == 'new_comment': # user liked the this post 
+            if this_comment.user_likes.filter(id=request.user.id).exists():
+                # Remove the like
+                this_comment.user_likes.remove(request.user)
+            else:
+                # Add the like
+                this_comment.user_likes.add(request.user)
 
-        id = body.get('post_id')    
-        comment_body = body.get('comment_body')
-        post = Post.objects.all().get(pk = int(id)) 
-        new_comment = Comment(user = request.user, post = post, comment_body = comment_body)     
-        new_comment.save()
+        elif operation == 'new_comment': # user liked the this post 
 
-    return JsonResponse({'message' : 'operation successful!'}, status = 200)
+            id = body.get('post_id')    
+            comment_body = body.get('comment_body')
+            post = Post.objects.all().get(pk = int(id)) 
+            new_comment = Comment(user = request.user, post = post, comment_body = comment_body)     
+            new_comment.save()
+
+        return JsonResponse({'message' : 'operation successful!'}, status = 200)

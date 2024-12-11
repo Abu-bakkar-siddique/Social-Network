@@ -323,6 +323,7 @@ function Register() {
                     <input id="confirmation_r" value={registerInfo.confirmation_r} className="form-control-x shape-round" onChange={listenChange} type="password" name="confirmation_r" placeholder="Confirm Password" />
                 </div>
                 <button className="btn btn-prim shape-round" type="submit">Register</button>
+
             </form>
             <div className="auth-link">
                 Already have an account?
@@ -393,9 +394,30 @@ function App() {
                 <Switch>
                     {/* Directly use component prop for most routes */}
 
-                    <Route exact path="/" component={AllPosts} />
+                    {/* <Route exact path="/" component={AllPosts} /> */}
                     <Route path="/create_post" component={NewPost} />
-                    <Route path="/feed" component={AllPosts} />
+                    <Route
+                        exact path="/"
+                        render={(props) => (
+                            // <ProfilePage
+                            //     {...props}
+                            //     user={user}
+                            // />
+                            <AllPosts
+                                {...props}
+                                user_id={undefined}
+                            />
+                        )}
+                    />
+                    <Route
+                        path="/feed"
+                        render={(props) => (
+                            <AllPosts
+                                {...props}
+                                user_id={undefined}
+                            />
+                        )}
+                    />
 
                     {/* Use render prop with explicit setUser prop */}
                     <Route
@@ -469,6 +491,43 @@ function HandleLogout({ setUser }) {
 }
 
 function ProfilePage({ user }) {
+
+    const handleFileUpload = (event) => {
+        const file = event.target.files[0];
+
+        if (!file) {
+            console.log("No file is selected");
+            alert("Please select a file.");
+            return;
+        }
+
+        const imageForm = new FormData();
+        imageForm.append('profile_pic', file);
+
+        fetch('/profile', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRFToken': CSRFToken(),
+
+            },
+            body: imageForm
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Request failed with status ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                setProfileDetails(prevData => ({ ...prevData, profilePicUrl: data.new_profile_pic_url }));
+                console.log("Profile picture updated successfully!");
+            })
+            .catch(error => {
+                console.error("Error updating profile picture:", error);
+            });
+    }
+
     if (!user.authenticated) {
         return (
 
@@ -476,25 +535,26 @@ function ProfilePage({ user }) {
         )
     }
 
-    const [profileDetails, setProfileDetails] = useState({ 'username': '', 'followers': undefined, 'following': undefined, 'profilePicUrl': '' })
+    const [profileDetails, setProfileDetails] = useState({ 'username': '', 'followers': undefined, 'following': undefined, 'profilePicUrl': '', selfProfile: true })
 
     useEffect(() => {
         // fetch users profile details here  
         const url = new URL('/profile', window.location.origin);
         url.searchParams.append('userID', user.userId);
+
         fetch(url, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
                 'X-CSRFToken': CSRFToken()
             }
+
         }).then(response => {
             if (response.ok) {
-
                 console.log(`yess ${response.status}`);
-                console.log(response);
                 return response.json();
             }
+
             else {
                 console.log(`someting went wrong! + ${response.status()}`);
                 throw new Error(`HTTP response error ${response.status}`);
@@ -505,8 +565,10 @@ function ProfilePage({ user }) {
                     username: profileData.username,
                     profilePicUrl: profileData.profilePicUrl,
                     followers: profileData.followers,
-                    following: profileData.following
+                    following: profileData.following,
+                    selfProfile: profileData.self_profile
                 });
+
             } catch (err) {
                 console.error("Error setting state:", err);
                 throw err; // Ensures the catch block is hit
@@ -514,40 +576,77 @@ function ProfilePage({ user }) {
         });
     }, []);
     return (
+        <>
+            <div className="profile-container justify-content-center align-items-center mt-5">
+                <div className=" text-center text-color-cream mt-4">
+                    <div className="mt-4">
+                        {profileDetails.profilePicUrl &&
+                            <div>
+                                <a
+                                    href="#"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        document.getElementById('fileInput').click();
+                                    }}
+                                >
+                                    <img
+                                        src={profileDetails.profilePicUrl}
+                                        className="border rounded-circle profile-dimensions"
+                                        alt="Avatar"
+                                        width="240"
 
-        <div className="profile-container justify-content-center align-items-center mt-5">
-            <div className=" text-center mt-4">
-                <div className="mt-3">
-                    <img src="https://i.imgur.com/JgYD2nQ.jpg" className="rounded-circle" width="160" />
-                </div>
+                                    />
+                                </a>
+                                <input
+                                    type="file"
+                                    id="fileInput"
+                                    style={{ display: 'none' }}
+                                    onChange={handleFileUpload}
+                                />
+                            </div>
+                        }
+                        {!profileDetails.profilePicUrl &&
+                            <div>
+                                <img
+                                    src={profileDetails.profilePicUrl}
+                                    className="border rounded-circle profile-dimensions"
+                                    alt="Avatar"
+                                    width="240"
+                                />
+                            </div>
+                        }
+                    </div>
+                    <div className="mt-3 text-center ">
+                        <h4 className="mb-2 username-size">{profileDetails.username}</h4>
 
-                <div className="mt-3 text-center">
-                    <h4 className="mb-2">{profileDetails.username}</h4>
-
-                    {/* This button is conditional, means it should'nt apear if user is viewing own profile 
+                        {/* This button is conditional, means it should'nt apear if user is viewing own profile 
                     and follow OR unfollow accordingly*/}
-                    <button className=" btn-prim follow shape-round col-2">Follow</button>
-                    <div className="justify-content-center  mt-4 px-4 row">
-                        <div>
-                            <h6 className="mb-0 col-6">Followers</h6>
-                            <span>{profileDetails.followers}</span>
+                        {!profileDetails.selfProfile && <button className=" btn-prim follow shape-round col-2">Follow</button>}
+                        <div className="justify-content-center mt-4 px-4 row">
+                            <div className="text-size-2">
+                                <h6 className="mb-0 col-6 text-size-2">Followers</h6>
+                                <span>{profileDetails.followers}</span>
 
-                        </div>
-                        <div>
-                            <h6 className="mb-0 col-6">Following</h6>
-                            <span>{profileDetails.following}</span>
+                            </div>
+                            <div className="text-size-2">
+                                <h6 className="mb-0 col-6 text-size-2">Following</h6>
+                                <span>{profileDetails.following}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+            <div className="mt-3">
+                <AllPosts user_id={user.userId} />
+            </div>
+        </>
     )
 }
 
 // user is undefined means fetch all posts, not specific to any user
-function AllPosts({ user = undefined }) { // providing default props
+function AllPosts({ user_id = undefined }) { // providing default props
 
-    const [posts, setPosts] = useState([]);
+    const [posts, setPosts] = useState([]); // all posts
     const [comments, setComments] = useState([]); // all comments 
     const [comment, setComment] = useState('');
     const [like, setLike] = useState({ 'type': '', 'id': undefined });
@@ -596,6 +695,7 @@ function AllPosts({ user = undefined }) { // providing default props
         const comments = {};
 
         parameter.forEach(post => {
+            console.log(post.timestamp);
             posts.push({
                 id: post.id,
                 username: post.username,
@@ -655,7 +755,7 @@ function AllPosts({ user = undefined }) { // providing default props
 
     React.useEffect(() => {
         const url = new URL('/feed', window.location.origin); // or another base URL
-        url.searchParams.append('category', user ? user.userId : 'all');
+        url.searchParams.append('category', user_id ? user_id : 'all');
         url.searchParams.append('page', currentPage);
         fetch(url, {
             method: 'GET',
@@ -691,6 +791,7 @@ function AllPosts({ user = undefined }) { // providing default props
                                             src={post.profile_pic_url}
                                             className="border ml-1 mt-1 rounded-circle profile-pic-height me-2"
                                             alt="Avatar"
+                                            width="40"
                                         />
                                     </a>
 
@@ -711,7 +812,7 @@ function AllPosts({ user = undefined }) { // providing default props
                                 </div>
 
                                 <div className="text-left ml-4 text-color-cream">
-                                    {post.body}  {post.profile_pic_url}
+                                    {post.body}
                                 </div>
 
                                 <div className="card-body ">
@@ -755,6 +856,7 @@ function AllPosts({ user = undefined }) { // providing default props
                                                 src={post.profile_pic_url}
                                                 className="border profile-pic-height rounded-circle me-2"
                                                 alt="Avatar"
+                                                width="40"
                                             />
                                         </a>
                                         <div className=" w-100 ml-2 text-left">
@@ -776,11 +878,13 @@ function AllPosts({ user = undefined }) { // providing default props
                                     <div className="mt-5">
                                         {comments[post.id]?.map((comnt, idx) => (
                                             <div key={idx} className="d-flex mr-3 mt-2 border-bottom">
+
                                                 <a href="">
                                                     <img
                                                         src={post.profile_pic_url}
                                                         className="border profile-pic-height rounded-circle me-2"
                                                         alt="Avatar"
+                                                        width="40"
                                                     />
                                                 </a>
 
