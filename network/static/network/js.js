@@ -521,7 +521,7 @@ function ProfilePage({ user }) {
             })
             .then(data => {
                 setProfileDetails(prevData => ({ ...prevData, profilePicUrl: data.new_profile_pic_url }));
-                console.log("Profile picture updated successfully!");
+                console.log(`Profile picture updated successfully :${data.new_profile_pic_url}`);
             })
             .catch(error => {
                 console.error("Error updating profile picture:", error);

@@ -69,7 +69,6 @@ def register(request):
         login(request, user)
         return  JsonResponse({"message": "Registeration successful."},status = 200)
 
-
 def create_post(request):
     if request.method == 'POST':
         post = json.loads(request.body)
@@ -97,7 +96,7 @@ def profile(request):
         user = User.objects.get(pk = request.user.pk)
         user.profile_picture = profile_pic
         user.save()
-        return JsonResponse({'message' : 'Profile picture updated'}, status = 200)
+        return JsonResponse({'message' : 'Profile picture updated','new_profile_pic_url' : request.build_absolute_uri(user.profile_picture.url)}, status = 200)
 
     # process GET request
     # Safely retrieve the userID from the GET parameters
@@ -118,7 +117,7 @@ def profile(request):
         }
 
         return JsonResponse(profile_details, status=200)
-
+        
     except ObjectDoesNotExist:
         return JsonResponse({'message': 'User not found'}, status=404)
 
