@@ -11,6 +11,7 @@ function CSRFToken() {
 // Check
 function NewPost() {
     const [post, setPost] = React.useState({ title: '', body: '' });
+    const history = useHistory();
 
     const submitPost = (event) => {
         event.preventDefault();
@@ -35,6 +36,8 @@ function NewPost() {
                 })
                 .then(data => {
                     console.log('Success:', data);
+                    history.push("/feed")
+
                 })
                 .catch(error => {
                     console.error('There was a problem with the fetch operation:', error);
@@ -487,7 +490,6 @@ function HandleLogout({ setUser }) {
     return null;
 }
 
-
 function ProfilePage({ user }) {
 
     const handleFileUpload = (event) => {
@@ -642,7 +644,7 @@ function ProfilePage({ user }) {
 }
 
 // // user is undefined means fetch all posts, not specific to any user
-function AllPosts({ user = undefined }) { // providing default props
+function AllPosts({ user = undefined, profileDetails = undefined }) { // providing default props
 
     const [posts, setPosts] = useState([]); // all posts
     const [comments, setComments] = useState([]); // all comments 
@@ -772,7 +774,7 @@ function AllPosts({ user = undefined }) { // providing default props
         }).catch(e => {
             console.log(e);
         });
-    }, [like, pageRequest, commentPost, user]); // Dependencies
+    }, [like, pageRequest, commentPost, profileDetails]); // Dependencies
 
     return (
         <>
@@ -881,7 +883,7 @@ function AllPosts({ user = undefined }) { // providing default props
 
                                                 <a href="">
                                                     <img
-                                                        src={post.profile_pic_url}
+                                                        src={comnt.user_profile_pic_url}
                                                         className="border profile-pic-height rounded-circle me-2"
                                                         alt="Avatar"
                                                         width="40"

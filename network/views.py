@@ -98,6 +98,7 @@ def profile(request):
         user.save()
         return JsonResponse({'message' : 'Profile picture updated','new_profile_pic_url' : request.build_absolute_uri(user.profile_picture.url)}, status = 200)
 
+    
     # process GET request
     # Safely retrieve the userID from the GET parameters
     user_id = request.GET.get('userID')
