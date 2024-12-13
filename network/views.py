@@ -67,7 +67,7 @@ def register(request):
              return  JsonResponse({"message": "Username already taken."},status = 409)
          
         login(request, user)
-        return  JsonResponse({"message": "Registeration successful."},status = 200)
+        return  JsonResponse({"message": "Registeration successful.", "userId": user.pk},status = 200)
 
 def create_post(request):
     if request.method == 'POST':
@@ -119,7 +119,7 @@ def profile(request):
 
         return JsonResponse(profile_details, status=200)
 
-    except ObjectDoesNotExist:
+    except User.DoesNotExist:
         return JsonResponse({'message': 'User not found'}, status=404)
 
     except Exception as e:

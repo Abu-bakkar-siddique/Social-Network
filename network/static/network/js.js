@@ -233,13 +233,15 @@ function Login({ setUser }) {
 
 //Check
 function Register() {
-    const { setUser } = useContext(AuthGlobalContext);
+
+    // const { setUser } = useContext(AuthGlobalContext);
     const [registerInfo, setRegisterInfo] = React.useState({
         "username_r": '',
         'email_r': '',
         "password_r": '',
         'confirmation_r': ''
     });
+
     const history = useHistory();
     function listenChange(event) {
         const { name, value } = event.target;
@@ -296,13 +298,8 @@ function Register() {
             return response.json();
         }).then(data => {
             console.log(data.message);
-            // set the user to be authenticated
-            setUser({ username: registerInfo.username_r, authenticated: true }); // updating the user state for navbar changes 
-            localStorage.setItem("user", JSON.stringify({
-                username: registerInfo.username_r,
-                authenticated: true
-            }));
-            history.push('/');
+
+            history.push('/login');
         }).catch(error => {
             console.log(error);
         })
@@ -414,7 +411,8 @@ function App() {
                         render={(props) => (
                             <AllPosts
                                 {...props}
-                                user_id={undefined}
+                                user={undefined}
+                                profileDetails={undefined}
                             />
                         )}
                     />
@@ -429,16 +427,8 @@ function App() {
                             />
                         )}
                     />
+                    <Route path="/register" component={Register} />
 
-                    <Route
-                        path="/register"
-                        render={(props) => (
-                            <Register
-                                {...props}
-                                setUser={setUser}
-                            />
-                        )}
-                    />
 
                     <Route
                         path="/logout"
@@ -455,7 +445,7 @@ function App() {
                         render={(props) => (
                             <ProfilePage
                                 {...props}
-                                user={user} usetUser={setUser}
+                                user={user}
                             />
                         )}
                     />
@@ -552,11 +542,13 @@ function ProfilePage({ user }) {
         }).then(response => {
             if (response.ok) {
                 console.log(`yess ${response.status}`);
+                console.log(user.userId);
                 return response.json();
             }
 
             else {
                 console.log(`someting went wrong! + ${response.status()}`);
+
                 throw new Error(`HTTP response error ${response.status}`);
             }
         }).then(profileData => {
