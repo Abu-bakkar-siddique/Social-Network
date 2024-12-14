@@ -3,13 +3,12 @@ from django.db import models
 from django.utils import timezone
 
 class User(AbstractUser):
-    bio = models.TextField(max_length=500, blank=True)
-    profile_picture = models.ImageField(upload_to='profile_pictures/',default = "profile_pictures/placeholder.jpg", blank=True)
-    followers = models.PositiveBigIntegerField(default=0)
-    following = models.PositiveBigIntegerField(default=0)
-    
+    profile_picture = models.ImageField(upload_to='profile_pictures/', default="profile_pictures/placeholder.jpg", blank=True)
+    followers = models.ManyToManyField('self', symmetrical=False, related_name='followed_by', blank=True)
+    following = models.ManyToManyField('self', symmetrical=False, related_name='follows', blank=True)
+
     def __str__(self):
-        return f"{self.username} + {self.bio}"
+        return f"{self.username}"
 
 class Post(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

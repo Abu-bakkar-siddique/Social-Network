@@ -109,7 +109,7 @@ function FixedNavbars() {
                         )}
 
                         <li className="nav-item">
-                            <Link className="nav-link" to="/feed">All Posts</Link>
+                            <Link className="nav-link" to="/feed?type=all">All Posts</Link>
                         </li>
 
                         {user.authenticated && (
@@ -119,7 +119,7 @@ function FixedNavbars() {
                                     <Link className="nav-link" to="/create_post">Create Post</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link" to="/">Following</Link>
+                                    <Link className="nav-link" to="/feed?type=following">Following</Link>
                                 </li>
                                 <li className="nav-item">
                                     <Link className="nav-link" to="/logout">Log Out</Link>
@@ -397,22 +397,22 @@ function App() {
 
                     {/* <Route exact path="/" component={AllPosts} /> */}
                     <Route path="/create_post" component={NewPost} />
+
                     <Route
                         exact path="/"
                         render={(props) => (
-
                             <AllPosts
                                 {...props}
-                                user_id={undefined}
+                                profileDetails={undefined}
                             />
                         )}
                     />
+
                     <Route
                         path="/feed"
                         render={(props) => (
                             <AllPosts
                                 {...props}
-                                user={undefined}
                                 profileDetails={undefined}
                             />
                         )}
@@ -482,7 +482,7 @@ function HandleLogout({ setUser }) {
 }
 
 function ProfilePage({ authenticated = false }) {
-    console.log('AAAAAAAAAAAA');
+
     const location = useLocation();
     const params = new URLSearchParams(location.search);
     const userId = params.get('userID')
@@ -642,7 +642,7 @@ function ProfilePage({ authenticated = false }) {
 }
 
 // // user is undefined means fetch all posts, not specific to any user
-function AllPosts({ userId = undefined, profileDetails = undefined }) { // providing default props
+function AllPosts({ profileDetails = undefined }) { // providing default props
 
     const [posts, setPosts] = useState([]); // all posts
     const [comments, setComments] = useState([]); // all comments 
@@ -651,6 +651,24 @@ function AllPosts({ userId = undefined, profileDetails = undefined }) { // provi
     const [currentPage, setCurrentPage] = useState(1);
     const [pageRequest, setPageRequest] = useState(false);
     const [commentPost, setCommentPost] = useState(0)
+
+    const location = useLocation();
+    const path = location.pathname;
+    const params = new URLSearchParams(location.search);
+    let type = null;
+
+    // this component is rendered as the feed page 
+    if (path === '/profile') {
+        type = params.get('userID');
+    }
+    else if (path === '/') {
+        type = 'all';
+    }
+
+    // this component is rendered as child component in the profilePage  
+    else {
+        type = params.get('type');
+    }
 
     const history = useHistory();
 
@@ -758,7 +776,7 @@ function AllPosts({ userId = undefined, profileDetails = undefined }) { // provi
     React.useEffect(() => {
 
         const url = new URL('/feed', window.location.origin); // or another base URL
-        url.searchParams.append('category', userId ? userId : 'all');
+        url.searchParams.append('category', type);
         url.searchParams.append('page', currentPage);
         fetch(url, {
             method: 'GET',
@@ -766,6 +784,7 @@ function AllPosts({ userId = undefined, profileDetails = undefined }) { // provi
                 'Content-Type': 'application/json',
                 'X-CSRFToken': CSRFToken(),
             }
+
         }).then(response => {
             if (!response.ok) throw new Error(response.status);
             return response.json();
@@ -775,7 +794,7 @@ function AllPosts({ userId = undefined, profileDetails = undefined }) { // provi
         }).catch(e => {
             console.log(e);
         });
-    }, [like, pageRequest, commentPost, profileDetails, userId]); // Dependencies
+    }, [like, pageRequest, commentPost, profileDetails, type]); // Dependencies
 
 
     function ViewProfile(user_id) {

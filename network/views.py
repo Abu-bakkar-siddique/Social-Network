@@ -98,7 +98,6 @@ def profile(request):
         user.save()
         return JsonResponse({'message' : 'Profile picture updated','new_profile_pic_url' : request.build_absolute_uri(user.profile_picture.url)}, status = 200)
 
-    
     # process GET request
     # Safely retrieve the userID from the GET parameters
     user_id = request.GET.get('userID')
@@ -106,14 +105,16 @@ def profile(request):
         return JsonResponse({'message': 'Missing userID in request parameters'}, status=400)
 
     try:
-        this_user = User.objects.get(pk=user_id)
-    
+        this_user = User.objects.filter(pk=user_id).annotate(
+            all_followers=Count('followers'),
+            all_following=Count('following')
+        ).first()    
         # Prepare the profile details
         profile_details = {
             'username': this_user.username,
             'profilePicUrl': request.build_absolute_uri(this_user.profile_picture.url),
-            'followers': this_user.followers, 
-            'following': this_user.following,  
+            'followers': this_user.all_followers, # count of  
+            'following': this_user.all_following,  # count of 
             'self_profile' : int(request.user.pk) == int(user_id)
         }
 
@@ -146,6 +147,9 @@ def feed (request) :
             print(f"{type(category)} {category}")
         if category == 'all':
             posts = Post.objects.all().order_by('-timestamp')
+        elif category == 'following' :
+            posts = Post.objects.all().order_by('-timestamp')
+
         else :
             posts = Post.objects.filter(user=User.objects.get(pk=int(category))).order_by('-timestamp')
     
@@ -232,3 +236,4 @@ def feed (request) :
             new_comment.save()
 
         return JsonResponse({'message' : 'operation successful!'}, status = 200)
+

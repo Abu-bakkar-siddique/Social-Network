@@ -7,3 +7,5 @@ problem:
 the profile component already takes userId as props to decide whos profile is supposed 
 to be fetched.
 I'd have to differentiate bw IF the profile page request is of the user's own or some commenter's profile
+
+
