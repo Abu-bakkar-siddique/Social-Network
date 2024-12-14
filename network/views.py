@@ -166,6 +166,7 @@ def feed (request) :
                 for comment in all_comments:
                     c = {
                         'id' : comment.pk,
+                        'userId' : comment.user.pk,
                         'user_profile_pic_url' : comment.user.profile_picture.url,
                         'comment_body' : comment.comment_body,
                         'likes' : comment.comment_likes,
@@ -176,6 +177,7 @@ def feed (request) :
             p = {
                 'id' : post.pk,
                 'username': post.user.username,
+                'user_id' : post.user.pk,
                 'profile_pic_url' : post.user.profile_picture.url,
                 'title' : post.title, 
                 'body' : post.text,

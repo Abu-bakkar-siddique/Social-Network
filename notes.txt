@@ -1,35 +1,9 @@
-KEEP IN MIND:
-There is a global user state now, 
-the login function updates the user's authentication status when
-    login credentials are correct
+# TODO
+on commenter's profile picture click:
+    pass this commenter's userId to the history.push("/profile") 
+    decode this userId in the profile component to show this commenters profile 
 
-In App Component, if the user is not authenticated, API call is made 
-to the server to check if the user is valid user or not.
-
->>>>> Because the backend serves an an API that's why DONOT redirect or render other pages(except for in index view)
-"ONLY Json response in and Json out".
-
-WHERE I LEFT OFF:
-    
-    -> all functions review and testing 
-    -> profilePage component
-
-######## LESSONS ########:
-    React hooks must always be called in the same order, regardless of conditions. means can't place the 
-    useEffect Hook inside a conditional.
-
-    pass the setState_X function to some component_Y if i want to change component_X based on logic on component_Y
-    React encourages to use sideEffects when, doing some state change inside the component functions
-    so the components are pure render functions.
-
-    in_short:
-        -> state changes are inside sideEffect hooks, anything that is not part of the rendering 
-        must go inside the sideEffect(fetching, state updation etc).
-
-        -> hooks are always called inside the function body, not inside some conditional
-
-SOUGHT THIS OUT :
-    implenting  all posts component first
-
-    comments will be represented with a saperate state for simplicity
-    as {post_id: [comments] ...}, where each comment is a JS object.
+problem:
+the profile component already takes userId as props to decide whos profile is supposed 
+to be fetched.
+I'd have to differentiate bw IF the profile page request is of the user's own or some commenter's profile

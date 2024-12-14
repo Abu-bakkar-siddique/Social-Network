@@ -1,5 +1,5 @@
 const { useState, useEffect, createContext, useContext } = React;
-const { BrowserRouter, Route, Switch, Link, useHistory } = ReactRouterDOM;
+const { BrowserRouter, Route, Switch, Link, useHistory, useParams, useLocation } = ReactRouterDOM;
 
 function CSRFToken() {
     const token = document.cookie
@@ -97,13 +97,14 @@ function FixedNavbars() {
 
             <div>
                 <nav className="sidebar">
-                    <a className="navbar-brand" to="/">Word Flow</a>
+
+                    <Link className="navbar-brand" to="/">Word Flow</Link>
 
                     <ul className="navbar-nav">
                         {user.authenticated && (
                             <li className="nav-item">
                                 {/* add an image here with the username */}
-                                <Link className="nav-link" to="/profile"><strong>{user.username}</strong></Link>
+                                <Link className="nav-link" to={`/profile?userID=${user.userId}`}><strong>{user.username}</strong></Link>
                             </li>
                         )}
 
@@ -429,7 +430,6 @@ function App() {
                     />
                     <Route path="/register" component={Register} />
 
-
                     <Route
                         path="/logout"
                         render={(props) => (
@@ -445,7 +445,8 @@ function App() {
                         render={(props) => (
                             <ProfilePage
                                 {...props}
-                                user={user}
+                                // userId={user.userId}
+                                authenticated={user.authenticated}
                             />
                         )}
                     />
@@ -480,7 +481,11 @@ function HandleLogout({ setUser }) {
     return null;
 }
 
-function ProfilePage({ user }) {
+function ProfilePage({ authenticated = false }) {
+    console.log('AAAAAAAAAAAA');
+    const location = useLocation();
+    const params = new URLSearchParams(location.search);
+    const userId = params.get('userID')
 
     const handleFileUpload = (event) => {
         const file = event.target.files[0];
@@ -518,9 +523,8 @@ function ProfilePage({ user }) {
             });
     }
 
-    if (!user.authenticated) {
+    if (!authenticated) {
         return (
-
             <h1 className="main-heading"> You are not logged in! </h1>
         )
     }
@@ -529,8 +533,10 @@ function ProfilePage({ user }) {
 
     useEffect(() => {
         // fetch users profile details here  
+        console.log(userId);
         const url = new URL('/profile', window.location.origin);
-        url.searchParams.append('userID', user.userId);
+        url.searchParams.append('userID', userId);
+
 
         fetch(url, {
             method: 'GET',
@@ -542,7 +548,7 @@ function ProfilePage({ user }) {
         }).then(response => {
             if (response.ok) {
                 console.log(`yess ${response.status}`);
-                console.log(user.userId);
+                console.log(userId);
                 return response.json();
             }
 
@@ -566,7 +572,7 @@ function ProfilePage({ user }) {
                 throw err; // Ensures the catch block is hit
             }
         });
-    }, []);
+    }, [userId]);
     return (
         <>
             <div className="profile-container justify-content-center align-items-center mt-5">
@@ -629,14 +635,14 @@ function ProfilePage({ user }) {
                 </div>
             </div>
             <div className="mt-3">
-                <AllPosts user={user} profileDetails={profileDetails} />
+                <AllPosts userId={userId} profileDetails={profileDetails} />
             </div>
         </>
     )
 }
 
 // // user is undefined means fetch all posts, not specific to any user
-function AllPosts({ user = undefined, profileDetails = undefined }) { // providing default props
+function AllPosts({ userId = undefined, profileDetails = undefined }) { // providing default props
 
     const [posts, setPosts] = useState([]); // all posts
     const [comments, setComments] = useState([]); // all comments 
@@ -645,6 +651,8 @@ function AllPosts({ user = undefined, profileDetails = undefined }) { // providi
     const [currentPage, setCurrentPage] = useState(1);
     const [pageRequest, setPageRequest] = useState(false);
     const [commentPost, setCommentPost] = useState(0)
+
+    const history = useHistory();
 
     const updateComment = (e) => {
         setComment(e.target.value);
@@ -691,6 +699,7 @@ function AllPosts({ user = undefined, profileDetails = undefined }) { // providi
 
             posts.push({
                 id: post.id,
+                user_id: post.user_id,
                 username: post.username,
                 profile_pic_url: post.profile_pic_url,
                 title: post.title,
@@ -749,7 +758,7 @@ function AllPosts({ user = undefined, profileDetails = undefined }) { // providi
     React.useEffect(() => {
 
         const url = new URL('/feed', window.location.origin); // or another base URL
-        url.searchParams.append('category', user ? user.userId : 'all');
+        url.searchParams.append('category', userId ? userId : 'all');
         url.searchParams.append('page', currentPage);
         fetch(url, {
             method: 'GET',
@@ -766,7 +775,15 @@ function AllPosts({ user = undefined, profileDetails = undefined }) { // providi
         }).catch(e => {
             console.log(e);
         });
-    }, [like, pageRequest, commentPost, profileDetails]); // Dependencies
+    }, [like, pageRequest, commentPost, profileDetails, userId]); // Dependencies
+
+
+    function ViewProfile(user_id) {
+        const url = new URL(window.location.href);
+        url.pathname = '/profile';
+        url.searchParams.set('userID', user_id);
+        history.push(url.pathname + url.search);
+    }
 
     return (
         <>
@@ -780,7 +797,11 @@ function AllPosts({ user = undefined, profileDetails = undefined }) { // providi
                             <div key={index} className="profile-container shape-round text-center mt-5" >
                                 {/* user/poster profile information */}
                                 <div className="d-flex mb-3 shape-round align-items-center">
-                                    <a href="">
+
+                                    <a href="#" onClick={(e) => {
+                                        e.preventDefault()
+                                        ViewProfile(post['user_id'])
+                                    }}>
                                         <img
                                             src={post.profile_pic_url}
                                             className="border ml-1 mt-1 rounded-circle profile-pic-height me-2"
@@ -790,9 +811,15 @@ function AllPosts({ user = undefined, profileDetails = undefined }) { // providi
                                     </a>
 
                                     <div className="d-flex justify-content-between w-100">
-                                        <a href="#" className="text-color-cream ml-3 me-2">
+
+                                        <a
+                                            href="#" onClick={(e) => {
+                                                e.preventDefault()
+                                                ViewProfile(post['user_id'])
+                                            }} className="text-color-cream ml-3 me-2">
                                             {post['username']}
                                         </a>
+
                                         <p className="text-muted mb-0 mr-3 text-end">
                                             {post['timestamp']}
                                         </p>
@@ -845,7 +872,12 @@ function AllPosts({ user = undefined, profileDetails = undefined }) { // providi
                                     </div>
 
                                     <div className="d-flex mr-3">
-                                        <a href="">
+
+                                        <a href="#" onClick={(e) => {
+                                            e.preventDefault()
+                                            ViewProfile(post['user_id'])
+                                        }} className="text-color-cream ml-3 me-2">
+
                                             <img
                                                 src={post.profile_pic_url}
                                                 className="border profile-pic-height rounded-circle me-2"
@@ -863,7 +895,7 @@ function AllPosts({ user = undefined, profileDetails = undefined }) { // providi
                                                 placeholder="Write a comment"
                                             />
 
-                                            <a onClick={() => addComment(post.id)} className="text-color-cream  me-2">
+                                            <a href="#" onClick={() => addComment(post.id)} className="text-color-cream ml-3 me-2">
                                                 post comment
                                             </a>
                                         </div>
@@ -873,7 +905,12 @@ function AllPosts({ user = undefined, profileDetails = undefined }) { // providi
                                         {comments[post.id]?.map((comnt, idx) => (
                                             <div key={idx} className="d-flex mr-3 mt-2 border-bottom">
 
-                                                <a href="">
+                                                <a
+                                                    href="#" onClick={(e) => {
+                                                        e.preventDefault()
+                                                        ViewProfile(comnt['userId'])
+                                                    }} className="text-color-cream ml-3 me-2">
+
                                                     <img
                                                         src={comnt.user_profile_pic_url}
                                                         className="border profile-pic-height rounded-circle me-2"
