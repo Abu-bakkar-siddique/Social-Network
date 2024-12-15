@@ -109,14 +109,20 @@ def profile(request):
             all_followers=Count('followers'),
             all_following=Count('following')
         ).first()    
+
+        im_following = None
+        if not int(request.user.pk) == int(user_id) :
+            im_following = request.user.following.filter(pk=this_user.pk).exists()
         # Prepare the profile details
         profile_details = {
             'username': this_user.username,
             'profilePicUrl': request.build_absolute_uri(this_user.profile_picture.url),
             'followers': this_user.all_followers, # count of  
             'following': this_user.all_following,  # count of 
-            'self_profile' : int(request.user.pk) == int(user_id)
+            'selfProfile' : int(request.user.pk) == int(user_id),
+            'imFollowing' : im_following
         }
+        print('I am following this user: ', im_following)
 
         return JsonResponse(profile_details, status=200)
 
@@ -140,15 +146,11 @@ def feed (request) :
         posts = None
         all_posts = []  
         
-        # checking c ategory
-        if category is None:
-            print('###### None ######')
-        else :
-            print(f"{type(category)} {category}")
         if category == 'all':
             posts = Post.objects.all().order_by('-timestamp')
+
         elif category == 'following' :
-            posts = Post.objects.all().order_by('-timestamp')
+            posts = request.user.posts_of_followers().order_by('-timestamp')
 
         else :
             posts = Post.objects.filter(user=User.objects.get(pk=int(category))).order_by('-timestamp')
@@ -168,6 +170,7 @@ def feed (request) :
                 all_comments = all_comments.annotate(comment_likes = Count('user_likes'))
                 comment_count = all_comments.count()
                 for comment in all_comments:
+ 
                     c = {
                         'id' : comment.pk,
                         'userId' : comment.user.pk,
@@ -237,3 +240,26 @@ def feed (request) :
 
         return JsonResponse({'message' : 'operation successful!'}, status = 200)
 
+# @login_required
+def follow_unfollow_request(request):
+    
+    current_user = request.user 
+    body = json.loads(request.body)
+    to_follow_user_id = body.get('userID')
+    to_follow_user = User.objects.get(pk = to_follow_user_id) 
+    following = None
+
+    if current_user.following.filter(pk=to_follow_user_id).exists():
+        current_user.following.remove(to_follow_user)
+        to_follow_user.followers.remove(current_user)
+
+    else:
+        current_user.following.add(to_follow_user)
+        to_follow_user.followers.add(current_user)
+    current_user.save()
+
+    following_people = current_user.following.all()
+    for f in following_people:
+        print(f.username) 
+    
+    return JsonResponse({'message' : 'follow/unfollow request successful'},status = 200)
