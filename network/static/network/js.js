@@ -9,7 +9,7 @@ function CSRFToken() {
 }
 
 // Check
-function NewPost({ user }) {
+function NewPost() {
     const [post, setPost] = React.useState({ title: '', body: '' });
     const history = useHistory();
 
@@ -36,7 +36,7 @@ function NewPost({ user }) {
                 })
                 .then(data => {
                     console.log('Success:', data);
-                    history.push('/feed?type=all')
+                    history.push("/feed")
 
                 })
                 .catch(error => {
@@ -396,16 +396,8 @@ function App() {
                     {/* Directly use component prop for most routes */}
 
                     {/* <Route exact path="/" component={AllPosts} /> */}
+                    <Route path="/create_post" component={NewPost} />
 
-                    <Route
-                        exact path="/create_post"
-                        render={(props) => (
-                            <NewPost
-                                {...props}
-                                user={user}
-                            />
-                        )}
-                    />
                     <Route
                         exact path="/"
                         render={(props) => (
@@ -537,36 +529,14 @@ function ProfilePage({ authenticated = false }) {
         )
     }
 
-    const [profileDetails, setProfileDetails] = useState({ 'username': '', 'followers': undefined, 'following': undefined, 'profilePicUrl': '', 'selfProfile': true, 'imFollowing': undefined })
-    const [followed, setFollowed] = useState(false);
-    function HandleFollowRequest() {
+    const [profileDetails, setProfileDetails] = useState({ 'username': '', 'followers': undefined, 'following': undefined, 'profilePicUrl': '', selfProfile: true })
 
-        fetch('/follow',
-            {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRFToken': CSRFToken()
-                },
-                body: JSON.stringify({
-                    'userID': userId
-                })
-
-            }).then(response => {
-                if (response.ok) {
-                    console.log(`yess ${response.status}`);
-                    return response.json();
-                }
-            }).then(data => {
-                console.log(data.message);
-                setFollowed(!followed);
-                console.log(followed)
-            })
-    }
     useEffect(() => {
         // fetch users profile details here  
+        console.log(userId);
         const url = new URL('/profile', window.location.origin);
         url.searchParams.append('userID', userId);
+
 
         fetch(url, {
             method: 'GET',
@@ -583,20 +553,18 @@ function ProfilePage({ authenticated = false }) {
             }
 
             else {
-                console.log(`someting went wrong! + ${response.status}`);
+                console.log(`someting went wrong! + ${response.status()}`);
 
                 throw new Error(`HTTP response error ${response.status}`);
             }
         }).then(profileData => {
-
             try {
                 setProfileDetails({
                     username: profileData.username,
                     profilePicUrl: profileData.profilePicUrl,
                     followers: profileData.followers,
                     following: profileData.following,
-                    selfProfile: profileData.selfProfile,
-                    imFollowing: profileData.imFollowing
+                    selfProfile: profileData.self_profile
                 });
 
             } catch (err) {
@@ -604,13 +572,13 @@ function ProfilePage({ authenticated = false }) {
                 throw err; // Ensures the catch block is hit
             }
         });
-    }, [userId, followed]);
+    }, [userId]);
     return (
         <>
             <div className="profile-container justify-content-center align-items-center mt-5">
                 <div className=" text-center text-color-cream mt-4">
                     <div className="mt-4">
-                        {profileDetails.selfProfile &&
+                        {profileDetails.profilePicUrl &&
                             <div>
                                 <a
                                     href="#"
@@ -624,6 +592,7 @@ function ProfilePage({ authenticated = false }) {
                                         className="border rounded-circle profile-dimensions"
                                         alt="Avatar"
                                         width="240"
+
                                     />
                                 </a>
                                 <input
@@ -634,7 +603,7 @@ function ProfilePage({ authenticated = false }) {
                                 />
                             </div>
                         }
-                        {!profileDetails.selfProfile &&
+                        {!profileDetails.profilePicUrl &&
                             <div>
                                 <img
                                     src={profileDetails.profilePicUrl}
@@ -650,17 +619,7 @@ function ProfilePage({ authenticated = false }) {
 
                         {/* This button is conditional, means it should'nt apear if user is viewing own profile 
                     and follow OR unfollow accordingly*/}
-                        {!profileDetails.selfProfile && (
-                            profileDetails.imFollowing ? (
-                                <button onClick={HandleFollowRequest} className="btn-prim follow shape-round col-2">
-                                    unfollow
-                                </button>
-                            ) : (
-                                <button onClick={HandleFollowRequest} className="btn-prim follow shape-round col-2">
-                                    follow
-                                </button>
-                            )
-                        )}
+                        {!profileDetails.selfProfile && <button className=" btn-prim follow shape-round col-2">Follow</button>}
                         <div className="justify-content-center mt-4 px-4 row">
                             <div className="text-size-2">
                                 <h6 className="mb-0 col-6 text-size-2">Followers</h6>
@@ -813,6 +772,7 @@ function AllPosts({ profileDetails = undefined }) { // providing default props
             console.log(e);
         });
     }
+
     React.useEffect(() => {
 
         const url = new URL('/feed', window.location.origin); // or another base URL
