@@ -7,10 +7,7 @@ class User(AbstractUser):
     followers = models.ManyToManyField('self', symmetrical=False, related_name='followed_by', blank=True)
     following = models.ManyToManyField('self', symmetrical=False, related_name='follows', blank=True)
 
-    def posts_of_followers(self):
-        return Post.objects.filter(user__in=self.following.all())
-
-    def __str__(self):  
+    def __str__(self):
         return f"{self.username}"
 
 class Post(models.Model):
