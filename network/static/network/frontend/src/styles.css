@@ -1,0 +1,324 @@
+:root {
+    --prim-color: #1dcaad;
+    --bg-color: #121212;
+    --bg-light: #282828;
+    --text-color: #eeeeed;
+    --text-muted: #b3b3b3;
+    --error-color: #ff4d4d;
+    --input-field-width: 100%;
+    --input-field-padding: 10px 15px;
+    --input-field-fontsize: 16px;
+}
+
+
+body {
+    margin-left: 250px;
+    padding: 20px;
+    background-color: #1e1e1e;
+    /* Dark background */
+    color: var(--text-color);
+    font-family: 'Arial', sans-serif;
+}
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 250px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    padding: 20px 0;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.sidebar .navbar-brand {
+    display: block;
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--prim-color);
+    margin-bottom: 30px;
+    text-decoration: none;
+}
+
+.sidebar .navbar-nav {
+    list-style-type: none;
+    padding: 0;
+}
+
+.sidebar .nav-item {
+    margin-bottom: 5px;
+}
+
+.sidebar .nav-link {
+    color: var(--text-color);
+    font-weight: 500;
+    padding: 12px 20px;
+    display: block;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background-color: var(--bg-light);
+    color: var(--prim-color);
+    border-left-color: var(--prim-color);
+}
+
+.sidebar .nav-link strong {
+    color: var(--prim-color);
+}
+
+/* Top Navigation Bar */
+.topnav {
+    background-color: var(--bg-light);
+    padding: 10px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.search-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.search-input {
+    flex-grow: 1;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: none;
+    padding: 10px 15px;
+    font-size: 16px;
+    padding-left: 40px;
+    /* Space for the search icon */
+    position: relative;
+}
+
+.search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.search-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--prim-color);
+}
+
+.search-icon {
+    position: absolute;
+    color: #ffffff;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+
+.search-button {
+    background-color: var(--prim-color);
+    color: var(--text-color);
+    border: none;
+    margin-left: 20px;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+
+.search-button:hover {
+    background-color: #0ca88e;
+    /* Lighter green on hover */
+}
+
+.search-button:active,
+.search-button:focus {
+    background-color: #0ca88e;
+    /* Same as hover color */
+    border: none;
+    outline: none;
+    box-shadow: none;
+    /* Remove any box shadow */
+}
+
+/* Remove the default focus outline for all buttons */
+button:focus {
+    outline: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+
+    body {
+        margin-left: 0;
+    }
+}
+
+.auth-container {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: var(--bg-light);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.profile-container {
+    background-color: var(--bg-light);
+
+}
+
+.form-control-x {
+    width: var(--input-field-width);
+    padding: var(--input-field-padding);
+    border: none;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-size: var(--input-field-fontsize);
+}
+
+.form-control-error {
+    width: var(--input-field-width);
+    padding: var(--input-field-padding);
+    border: none;
+    background-color: var(--bg-color);
+    outline: 2px solid rgb(238, 49, 49);
+    color: var(--text-color);
+    font-size: var(--input-field-fontsize);
+}
+
+.btn-prim {
+    width: 100%;
+    padding: 10px 15px;
+    border: none;
+    background-color: var(--prim-color);
+    color: var(--text-color);
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-prim:hover {
+    background-color: #0ca88e;
+    /* Lighter green on hover */
+}
+
+.btn-prim:active,
+.btn-prim:focus {
+    background-color: #0ca88e;
+    /* Same as hover color */
+    border: none;
+    outline: none;
+    box-shadow: none;
+    /* Remove any box shadow */
+}
+
+.shape-round {
+    border-radius: 20px;
+}
+
+.auth-link {
+    margin: 15px;
+}
+
+.form-control-x:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--prim-color);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: none;
+
+}
+
+.main-heading {
+    font-weight: 700 !important;
+    font-family: 'Arial', sans-serif !important;
+    color: #98a4b3;
+}
+
+.text-color-cream {
+    color: #98a4b3;
+}
+
+
+.text-left {
+    text-align: left;
+}
+
+a:hover {
+    color: inherit;
+    text-decoration: none;
+}
+
+.border {
+    border-bottom: 2px solid #282828;
+}
+
+.profile-pic-height {
+    max-height: 40px;
+    max-width: 80px;
+    object-fit: cover;
+}
+
+.comment-box {
+    width: 100%;
+    padding: var(--input-field-padding);
+    border: none;
+    background-color: #1d1d1d;
+    color: var(--text-color);
+    font-size: var(--input-field-fontsize);
+}
+
+.comment-body {
+    width: 100%;
+    padding: var(--input-field-padding);
+    border: none;
+    background-color: #252424;
+    color: var(--text-color);
+    font-size: var(--input-field-fontsize);
+}
+
+.username-size {
+    font-size: 50px;
+}
+
+.text-size-2 {
+    font-size: 30px;
+}
+
+.comment-link {
+    display: inline-block;
+    text-align: left;
+}
+
+.fade-in {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fade-in.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.profile-dimensions {
+    max-height: 240px;
+    max-width: 240px;
+    object-fit: cover;
+}
