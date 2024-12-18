@@ -1,6 +1,7 @@
-from django.urls import path
+from django.urls import path, re_path
 from django.conf.urls.static import static
 from django.conf import settings
+from django.views.generic import TemplateView
 from . import views
 
 urlpatterns = [
@@ -11,7 +12,8 @@ urlpatterns = [
     path("register", views.register, name="register"),
     path("profile", views.profile, name="profile"),
     path("create_post", views.create_post, name = "create_post"),
-    path("follow", views.follow_unfollow_request, name = "follow")
-    
+    path("follow", views.follow_unfollow_request, name = "follow"),
+    # re_path(r'^.*$', TemplateView.as_view(template_name='network/index.html')),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

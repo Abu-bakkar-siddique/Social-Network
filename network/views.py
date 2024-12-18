@@ -11,8 +11,10 @@ from .models import *
 import json
 import time 
 
-def index(request):
+def default(request):
+    return render(request, "network/index.html", status=200)
 
+def index(request):
     if request.META.get('Content-Type') == 'application/json':
 
         this_user = request.user
@@ -23,10 +25,12 @@ def index(request):
         else:
             userInfo = {'username' : None, 'authenticated' : False, 'userId': this_user.pk}
             return JsonResponse(userInfo, status =401)
-    # print(request.user.pk)
     return render(request, "network/index.html", status=200)
 @csrf_exempt
 def login_view(request):
+    if request.method == 'GET' and request.accepts('text/html') :
+        return render(request, "network/index.html", status=200) 
+
     if request.method == "POST":
         
         data = json.loads(request.body) 
@@ -47,6 +51,9 @@ def logout_view(request):
 
 @csrf_exempt
 def register(request):
+    if request.method == 'GET' and request.accepts('text/html') :
+        return render(request, "network/index.html", status=200) 
+   
     if request.method == "POST":
 
         data = json.loads(request.body)
@@ -70,6 +77,10 @@ def register(request):
         return  JsonResponse({"message": "Registeration successful.", "userId": user.pk},status = 200)
 
 def create_post(request):
+
+    if request.method == 'GET' and request.accepts('text/html') :
+        return render(request, "network/index.html", status=200) 
+
     if request.method == 'POST':
         post = json.loads(request.body)
         title = post['title']
@@ -89,7 +100,10 @@ def create_post(request):
 
 @csrf_exempt
 def profile(request):
-
+    # If it's a GET request with Accept header for HTML, render the main page
+    if request.method == 'GET' and request.accepts('text/html'):
+        
+        return render(request, "network/index.html", status=200)
     # process POST request
     if request.method == 'POST' and request.FILES.get('profile_pic'):
         profile_pic = request.FILES['profile_pic']
@@ -100,6 +114,7 @@ def profile(request):
 
     # process GET request
     # Safely retrieve the userID from the GET parameters
+    index(request)
     user_id = request.GET.get('userID')
     if not user_id:
         return JsonResponse({'message': 'Missing userID in request parameters'}, status=400)
@@ -133,12 +148,15 @@ def profile(request):
         return JsonResponse({'message': f'An unexpected error occurred: {str(e)}'}, status=500)
 
 def feed (request) :    
-
-    # initial request.
+    if request.method == 'GET' and request.accepts('text/html'):
+        print("AAAAAAAAAAAAAA")
+        return render(request, "network/index.html", status=200)
+    
     if request.method == "GET":
         category = request.GET.get('category')
         page = request.GET.get('page')
-    
+        if category == 'null' : category = 'all'
+
         if page is None:
             print('page is None')
         else :
@@ -199,8 +217,9 @@ def feed (request) :
 
         return JsonResponse({"posts" : all_posts}, status = 200) # success
 
+    #post request handler
     else :
-        time.sleep(1)
+        # time.sleep(1)
         # if post request => update likes
         body = json.loads(request.body)
         id = None

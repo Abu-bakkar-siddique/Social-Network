@@ -1,5 +1,19 @@
-# TODO
-there is a bug in following other users, follow request 
-is successfull and ProfilePage is re-rendered but profileDetails remains the same 
+PROBLEM:
+1. NoneType error in the backend:
+    The issue is not with the type param extraction in the frontend.
 
-FIX IT
+
+## IMPORTANT OBSERVATION:
+on the reload of the Allposts component, the url that hits the backend is:
+GET /feed?type=all HTTP/1.1" 500
+and not the API endpoint url(GET /feed?category=all&page=1) that is being called in the useEffect of
+the component.
+
+this problem does not arise in the profile/ since the url in the 
+browser and the URL of the API endpoint match
+
+POSSIBLE SOLUTION:
+make the api endpoint url and the brower url same:
+  => change the string 'type' to 'category' in the url 
+  => add the infromation about the 'page'
+  this will match the endpoint url.

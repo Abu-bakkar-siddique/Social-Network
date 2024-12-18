@@ -36,7 +36,7 @@ function NewPost({ user }) {
                 })
                 .then(data => {
                     console.log('Success:', data);
-                    history.push('/feed?type=all')
+                    history.push(`/profile?userID=${user.userId}`)
 
                 })
                 .catch(error => {
@@ -109,7 +109,7 @@ function FixedNavbars() {
                         )}
 
                         <li className="nav-item">
-                            <Link className="nav-link" to="/feed?type=all">All Posts</Link>
+                            <Link className="nav-link" to="/feed?category=all&page=1">All Posts</Link>
                         </li>
 
                         {user.authenticated && (
@@ -119,7 +119,7 @@ function FixedNavbars() {
                                     <Link className="nav-link" to="/create_post">Create Post</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link" to="/feed?type=following">Following</Link>
+                                    <Link className="nav-link" to="/feed?category=following&page=1">Following</Link>
                                 </li>
                                 <li className="nav-item">
                                     <Link className="nav-link" to="/logout">Log Out</Link>
@@ -564,7 +564,9 @@ function ProfilePage({ authenticated = false }) {
             })
     }
     useEffect(() => {
+
         // fetch users profile details here  
+        console.log("________________Profile Fetched________________")
         const url = new URL('/profile', window.location.origin);
         url.searchParams.append('userID', userId);
 
@@ -682,8 +684,8 @@ function ProfilePage({ authenticated = false }) {
     )
 }
 
-// // user is undefined means fetch all posts, not specific to any user
-function AllPosts({ profileDetails = undefined }) { // providing default props
+// user is undefined means fetch all posts, not specific to any user
+function AllPosts({ userId = null, profileDetails = undefined }) { // providing default props
 
     const [posts, setPosts] = useState([]); // all posts
     const [comments, setComments] = useState([]); // all comments 
@@ -694,24 +696,29 @@ function AllPosts({ profileDetails = undefined }) { // providing default props
     const [commentPost, setCommentPost] = useState(0)
 
     const location = useLocation();
+    const history = useHistory();
     const path = location.pathname;
     const params = new URLSearchParams(location.search);
     let type = null;
 
-    // this component is rendered as the feed page 
-    if (path === '/profile') {
-        type = params.get('userID');
+    console.log(`The parameters are : ${params}`);
+
+    // this checks if on profilePage
+    if (userId) {
+        type = userId;
+    }
+    //feed page check
+    else if (path === '/feed') {
+
+        type = params.get('category');
+        console.log("AAAAAAAAAa");
+        if (params.get("page") != currentPage) {
+            history.push(`/feed?category=${type}&${currentPage}`)
+        }
     }
     else if (path === '/') {
         type = 'all';
     }
-
-    // this component is rendered as child component in the profilePage  
-    else {
-        type = params.get('type');
-    }
-
-    const history = useHistory();
 
     const updateComment = (e) => {
         setComment(e.target.value);
@@ -754,7 +761,6 @@ function AllPosts({ profileDetails = undefined }) { // providing default props
         const comments = {};
 
         parameter.forEach(post => {
-            console.log(post.timestamp);
 
             posts.push({
                 id: post.id,
@@ -814,15 +820,15 @@ function AllPosts({ profileDetails = undefined }) { // providing default props
         });
     }
     React.useEffect(() => {
-
+        console.log("Control was here.");
         const url = new URL('/feed', window.location.origin); // or another base URL
         url.searchParams.append('category', type);
         url.searchParams.append('page', currentPage);
         fetch(url, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
                 'X-CSRFToken': CSRFToken(),
+                'Accept': 'application/json'
             }
 
         }).then(response => {
@@ -835,7 +841,6 @@ function AllPosts({ profileDetails = undefined }) { // providing default props
             console.log(e);
         });
     }, [like, pageRequest, commentPost, profileDetails, type]); // Dependencies
-
 
     function ViewProfile(user_id) {
         const url = new URL(window.location.href);
