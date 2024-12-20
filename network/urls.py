@@ -13,7 +13,7 @@ urlpatterns = [
     path("profile", views.profile, name="profile"),
     path("create_post", views.create_post, name = "create_post"),
     path("follow", views.follow_unfollow_request, name = "follow"),
-    path("edit_post", views.edit_post, name = "edit_post") 
+    # re_path(r'^.*$', TemplateView.as_view(template_name='network/index.html')),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

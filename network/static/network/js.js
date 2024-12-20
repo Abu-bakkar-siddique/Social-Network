@@ -10,36 +10,23 @@ function CSRFToken() {
 
 // Check
 function NewPost({ user }) {
-    let [post, setPost] = React.useState({ title: '', body: '', id: null });
+    const [post, setPost] = React.useState({ title: '', body: '' });
     const history = useHistory();
-    const location = useLocation();
-    const EditPost = location.state ? location.state.toEditPost : null;
 
-    useEffect(() => {
-        if (EditPost) {
-            console.log("post edit mode");
-            console.log(EditPost.title);
-            setPost({ title: EditPost.title, body: EditPost.body, id: EditPost.id });
-        }
-    }, [EditPost]);
-
-    function submitPost(event, id = null) {
+    const submitPost = (event) => {
         event.preventDefault();
 
-        let requestBody = id
-            ? JSON.stringify({ title: post.title, body: post.body, id: post.id })
-            : JSON.stringify({ title: post.title, body: post.body });
-
-        const urlString = id ? '/edit_post' : '/create_post';
-
         if (post.title && post.body) {
-            fetch(urlString, {
+            fetch('/create_post', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': CSRFToken(),
                 },
-                body: requestBody,
+                body: JSON.stringify({
+                    'title': post.title,
+                    'body': post.body
+                }),
             })
                 .then(response => {
                     if (!response.ok) {
@@ -49,12 +36,15 @@ function NewPost({ user }) {
                 })
                 .then(data => {
                     console.log('Success:', data);
-                    setPost({ title: '', body: '', id: null }); // Clear the form fields
-                    history.push(`/profile?userID=${user.userId}`);
+                    history.push(`/profile?userID=${user.userId}`)
+
                 })
                 .catch(error => {
                     console.error('There was a problem with the fetch operation:', error);
                 });
+
+            // Clear the form fields
+            setPost({ title: '', body: '' });
         } else {
             console.log('Please fill up all fields.');
         }
@@ -64,11 +54,11 @@ function NewPost({ user }) {
         <div className="text-center">
             <div id="new-post" className="justify-content-center mt-4">
                 <div className="d-flex ml-2 justify-content-start">
-                    <h3 className="main-heading">{EditPost ? "Edit Post" : "Create Post"}</h3>
+                    <h3 className="main-heading">Create Post</h3>
                 </div>
             </div>
 
-            <form id="compose-form" onSubmit={(event) => { post.id ? submitPost(event, post.id) : submitPost(event) }}>
+            <form id="compose-form" onSubmit={submitPost}>
                 <textarea
                     value={post.title}
                     onChange={(e) => setPost({ ...post, title: e.target.value })}
@@ -78,7 +68,7 @@ function NewPost({ user }) {
                 />
 
                 <textarea
-                    value={post.body}
+                    value={post.text}
                     onChange={(e) => setPost({ ...post, body: e.target.value })}
                     className="form-control-x shape-round mb-3"
                     placeholder="What's up on your mind?"
@@ -92,7 +82,6 @@ function NewPost({ user }) {
         </div>
     );
 }
-
 
 // Check
 function FixedNavbars({ setCurrentPage, currentPage }) {
@@ -352,9 +341,14 @@ function App() {
 
     let userVar = localStorage.getItem('user');
     const [user, setUser] = React.useState(userVar ? JSON.parse(userVar) : { username: undefined, userId: undefined, authenticated: false });
-    const [currentPage, setCurrentPage] = useState(1);
+
+    const [currentPage, setCurrentPage] = useState(() => {
+        const params = new URLSearchParams(window.location.search);
+        return parseInt(params.get('page')) || 1;
+    });
+
     React.useEffect(() => {
-        // Same authentication check as before
+
         if (!user.authenticated) {
             fetch("/", {
                 method: 'GET',
@@ -433,7 +427,8 @@ function App() {
                         path="/feed"
                         render={(props) => (
                             <AllPosts
-                                {...props} currentPage={currentPage} setCurrentPage={setCurrentPage}
+                                {...props}
+                                currentPage={currentPage} setCurrentPage={setCurrentPage}
                                 profileDetails={undefined}
                             />
                         )}
@@ -467,6 +462,7 @@ function App() {
                             <ProfilePage
                                 {...props}
                                 setCurrentPage={setCurrentPage}
+                                currentPage={currentPage}
                                 authenticated={user.authenticated}
                             />
                         )}
@@ -513,7 +509,6 @@ function HandleLogout({ setUser }) {
 }
 
 function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
-    setCurrentPage(1);
     const [profileDetails, setProfileDetails] = useState({ 'userId': null, 'username': '', 'followers': undefined, 'following': undefined, 'profilePicUrl': '', 'selfProfile': true, 'imFollowing': undefined })
     const [followed, setFollowed] = useState(false);
     const location = useLocation();
@@ -572,7 +567,7 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
                     'X-CSRFToken': CSRFToken()
                 },
                 body: JSON.stringify({
-                    'userID': userId //to follow user id
+                    'userID': userId
                 })
 
             }).then(response => {
@@ -581,11 +576,17 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
                     return response.json();
                 }
             }).then(data => {
-                // console.log(data.message);
+                console.log(data.message);
                 setFollowed(!followed);
                 console.log(followed)
             })
     }
+    React.useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const page = parseInt(params.get('page')) || 1;
+
+        setCurrentPage(page);
+    }, [location.search]);
     useEffect(() => {
 
         // fetch users profile details here  
@@ -629,7 +630,7 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
                 throw err; // Ensures the catch block is hit
             }
         });
-    }, [userId, followed]);
+    }, [userId, followed, currentPage]);
     return (
         <>
             <div className="profile-container justify-content-center align-items-center mt-5">
@@ -791,8 +792,7 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
                 body: post.body,
                 timestamp: post.timestamp,
                 likes: post.likes,
-                comment_count: post.comment_count,
-                self_post: post.self_post
+                comment_count: post.comment_count
             });
 
             comments[post.id] = post.post_comments;
@@ -803,12 +803,31 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
     }
 
     function togglePrevious() {
-        setCurrentPage(currentPage - 1);
-        setTimeout(() => setPageRequest(pageRequest + 1));
+        const newPage = currentPage - 1;
+        const params = new URLSearchParams(location.search);
+        params.set('page', newPage);
+        if (profileDetails) {
+            history.push(`/profile?${params.toString()}`);
+        }
+        else {
+            history.push(`/feed?${params.toString()}`);
+
+        }
+        setCurrentPage(newPage); // Sync state with URL
     }
+
     function toggleNext() {
-        setCurrentPage(currentPage + 1);
-        setTimeout(() => setPageRequest(pageRequest + 1));
+        const newPage = currentPage + 1;
+        const params = new URLSearchParams(location.search);
+        params.set('page', newPage);
+        if (profileDetails) {
+            history.push(`/profile?${params.toString()}`);
+        }
+        else {
+            history.push(`/feed?${params.toString()}`);
+
+        }
+        setCurrentPage(newPage); // Sync state with URL
     }
 
     function addComment(post_id) {
@@ -842,6 +861,13 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
     }
 
     React.useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const page = parseInt(params.get('page')) || 1;
+
+        setCurrentPage(page);
+    }, [location.search]);
+
+    React.useEffect(() => {
         console.log("Control was here.");
         const url = new URL('/feed', window.location.origin); // or another base URL
         url.searchParams.append('category', type);
@@ -862,17 +888,13 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
         }).catch(e => {
             console.log(e);
         });
-    }, [like, pageRequest, commentPost, profileDetails, type]); // Dependencies
+    }, [like, pageRequest, commentPost, profileDetails, currentPage, type]); // Dependencies
 
     function ViewProfile(user_id) {
         const url = new URL(window.location.href);
         url.pathname = '/profile';
         url.searchParams.set('userID', user_id);
         history.push(url.pathname + url.search);
-    }
-    function updateCall(event, toEditPost) {
-        event.preventDefault();
-        history.push("/edit_post", { toEditPost });
     }
 
     return (
@@ -901,38 +923,25 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
                                     </a>
 
                                     <div className="d-flex justify-content-between w-100">
-                                        <a href="#" className="text-color-cream ml-3 me-2"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                ViewProfile(post['user_id']);
-                                            }}>
+
+                                        <a
+                                            href="#" onClick={(e) => {
+                                                e.preventDefault()
+                                                ViewProfile(post['user_id'])
+                                            }} className="text-color-cream ml-3 me-2">
                                             {post['username']}
                                         </a>
 
-                                        <div className="d-flex align-items-center ms-auto">
-                                            <p className="text-muted mb-0 mr-3">
-                                                {post['timestamp']}
-                                            </p>
-                                            {post.self_post && (
-                                                <a
-                                                    href="#"
-                                                    onClick={(event) => updateCall(event, { 'title': post.title, 'body': post.body, 'id': post.id })}
-                                                    className="text-color-cream mr-4">
-                                                    Edit
-                                                </a>
-                                            )}
-
-                                        </div>
+                                        <p className="text-muted mb-0 mr-3 text-end">
+                                            {post['timestamp']}
+                                        </p>
                                     </div>
-
                                 </div>
 
                                 <div className="text-left ml-4 mb-4 text-color-cream" >
-
                                     <h4>
                                         {post.title}
                                     </h4>
-
                                 </div>
 
                                 <div className="text-left ml-4 text-color-cream">
@@ -1044,6 +1053,7 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
                             </div>
                         ))
                     )}
+
                     <div className="d-flex justify-content-center mt-3 align-items-center">
                         {currentPage > 1 && (
                             <button className="btn-prim mr-4 col-2 shape-round"
