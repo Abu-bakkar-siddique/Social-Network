@@ -1,5 +1,5 @@
 from django.contrib.auth import authenticate, login, logout
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.core.paginator import Paginator
@@ -72,7 +72,7 @@ def register(request):
             user.save()
         except IntegrityError:
              return  JsonResponse({"message": "Username already taken."},status = 409)
-         
+        
         login(request, user)
         return  JsonResponse({"message": "Registeration successful.", "userId": user.pk},status = 200)
 
@@ -82,7 +82,20 @@ def create_post(request):
         return render(request, "network/index.html", status=200) 
 
     if request.method == 'POST':
+
         post = json.loads(request.body)
+
+        # post updated request
+        if 'postId' in post :
+            update_post = Post.objects.get(pk = post['userId']) 
+
+            update_post.title = post['title']
+            update_post.body = post['body']
+
+            update_post.save()
+            return JsonResponse({'message' : 'post edited successfully'}, status = 200)
+
+        # post creation request
         title = post['title']
         body = post['body']
         
@@ -99,57 +112,45 @@ def create_post(request):
     return JsonResponse({'error': 'Invalid request method'}, status=405)  # Method not allowed
 
 @csrf_exempt
+
 def profile(request):
-    # If it's a GET request with Accept header for HTML, render the main page
-    if request.method == 'GET' and request.accepts('text/html'):
-        
-        return render(request, "network/index.html", status=200)
-    # process POST request
-    if request.method == 'POST' and request.FILES.get('profile_pic'):
-        profile_pic = request.FILES['profile_pic']
-        user = User.objects.get(pk = request.user.pk)
-        user.profile_picture = profile_pic
-        user.save()
-        return JsonResponse({'message' : 'Profile picture updated','new_profile_pic_url' : request.build_absolute_uri(user.profile_picture.url)}, status = 200)
-
-    # process GET request
-    # Safely retrieve the userID from the GET parameters
-    index(request)
-    user_id = request.GET.get('userID')
-    if not user_id:
-        return JsonResponse({'message': 'Missing userID in request parameters'}, status=400)
-
     try:
-        this_user = User.objects.filter(pk=user_id).annotate(
-            all_followers=Count('followers'),
-            all_following=Count('following')
-        ).first()    
-
-        im_following = None
-        if not int(request.user.pk) == int(user_id) :
+        user_id = request.GET.get('userID')
+        if not user_id:
+            return JsonResponse({'message': 'Missing userID'}, status=400)
+            
+        # Use prefetch_related to optimize queries and ensure consistency
+        this_user = User.objects.prefetch_related(
+            'followers', 
+            'following'
+        ).filter(pk=user_id).annotate(
+            all_followers=Count('followers', distinct=True),
+            all_following=Count('following', distinct=True)
+        ).first()
+        
+        if not this_user:
+            return JsonResponse({'message': 'User not found'}, status=404)
+            
+        im_following = False
+        if request.user.is_authenticated and int(request.user.pk) != int(user_id):
             im_following = request.user.following.filter(pk=this_user.pk).exists()
-        # Prepare the profile details
+            
         profile_details = {
-            'username': this_user.username,
+            'userId': this_user.pk,
+            'username': this_user.username,    
             'profilePicUrl': request.build_absolute_uri(this_user.profile_picture.url),
-            'followers': this_user.all_followers, # count of  
-            'following': this_user.all_following,  # count of 
-            'selfProfile' : int(request.user.pk) == int(user_id),
-            'imFollowing' : im_following
+            'followers': this_user.all_followers,
+            'following': this_user.all_following,
+            'selfProfile': request.user.is_authenticated and int(request.user.pk) == int(user_id),
+            'imFollowing': im_following
         }
-        print('I am following this user: ', im_following)
-
+        
         return JsonResponse(profile_details, status=200)
-
-    except User.DoesNotExist:
-        return JsonResponse({'message': 'User not found'}, status=404)
-
+        
     except Exception as e:
-        return JsonResponse({'message': f'An unexpected error occurred: {str(e)}'}, status=500)
-
+        return JsonResponse({'message': f'Error: {str(e)}'}, status=500)
 def feed (request) :    
     if request.method == 'GET' and request.accepts('text/html'):
-        print("AAAAAAAAAAAAAA")
         return render(request, "network/index.html", status=200)
     
     if request.method == "GET":
@@ -210,7 +211,8 @@ def feed (request) :
                 'likes' : post.post_likes,
                 'post_comments' : comments,
                 'comment_count' : comment_count,
-                'actual_timestamp' : post.timestamp
+                'actual_timestamp' : post.timestamp,
+                'self_post' : int(post.user.pk) == int(request.user.pk)
             }
 
             all_posts.append(p)
@@ -219,7 +221,7 @@ def feed (request) :
 
     #post request handler
     else :
-        # time.sleep(1)
+
         # if post request => update likes
         body = json.loads(request.body)
         id = None
@@ -261,24 +263,45 @@ def feed (request) :
 
 # @login_required
 def follow_unfollow_request(request):
+    try:
+        current_user = request.user 
+        body = json.loads(request.body)
+        to_follow_user_id = body.get('userID')
+        
+        # Use select_for_update() to prevent race conditions
+        with transaction.atomic():
+            to_follow_user = User.objects.select_for_update().get(pk=to_follow_user_id)
+            current_user = User.objects.select_for_update().get(pk=current_user.pk)
+            
+            if current_user.following.filter(pk=to_follow_user_id).exists():
+                current_user.following.remove(to_follow_user)
+                to_follow_user.followers.remove(current_user)
+            else:
+                current_user.following.add(to_follow_user)
+                to_follow_user.followers.add(current_user)
+                
+            # Save both users within the transaction
+            current_user.save()
+            to_follow_user.save()
+            
+        return JsonResponse({'message': 'follow/unfollow request successful'}, status=200)
+    except User.DoesNotExist:
+        return JsonResponse({'message': 'User not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'message': f'Error processing request: {str(e)}'}, status=500)
+
+def edit_post(request) :
+    if request.method == 'GET' and request.accepts('text/html'):
+        return render(request, "network/index.html", status=200)
     
-    current_user = request.user 
-    body = json.loads(request.body)
-    to_follow_user_id = body.get('userID')
-    to_follow_user = User.objects.get(pk = to_follow_user_id) 
-    following = None
+    # read the request body
+    post_data = json.loads(request.body)
 
-    if current_user.following.filter(pk=to_follow_user_id).exists():
-        current_user.following.remove(to_follow_user)
-        to_follow_user.followers.remove(current_user)
+    to_edit_post = Post.objects.get(pk = post_data["id"])
 
-    else:
-        current_user.following.add(to_follow_user)
-        to_follow_user.followers.add(current_user)
-    current_user.save()
+    to_edit_post.title = post_data["title"]
+    to_edit_post.text = post_data["body"]
 
-    following_people = current_user.following.all()
-    for f in following_people:
-        print(f.username) 
-    
-    return JsonResponse({'message' : 'follow/unfollow request successful'},status = 200)
+    to_edit_post.save()
+
+    return JsonResponse({"message" : "post edited successfully"}, status = 200)

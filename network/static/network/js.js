@@ -10,23 +10,36 @@ function CSRFToken() {
 
 // Check
 function NewPost({ user }) {
-    const [post, setPost] = React.useState({ title: '', body: '' });
+    let [post, setPost] = React.useState({ title: '', body: '', id: null });
     const history = useHistory();
+    const location = useLocation();
+    const EditPost = location.state ? location.state.toEditPost : null;
 
-    const submitPost = (event) => {
+    useEffect(() => {
+        if (EditPost) {
+            console.log("post edit mode");
+            console.log(EditPost.title);
+            setPost({ title: EditPost.title, body: EditPost.body, id: EditPost.id });
+        }
+    }, [EditPost]);
+
+    function submitPost(event, id = null) {
         event.preventDefault();
 
+        let requestBody = id
+            ? JSON.stringify({ title: post.title, body: post.body, id: post.id })
+            : JSON.stringify({ title: post.title, body: post.body });
+
+        const urlString = id ? '/edit_post' : '/create_post';
+
         if (post.title && post.body) {
-            fetch('/create_post', {
+            fetch(urlString, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': CSRFToken(),
                 },
-                body: JSON.stringify({
-                    'title': post.title,
-                    'body': post.body
-                }),
+                body: requestBody,
             })
                 .then(response => {
                     if (!response.ok) {
@@ -36,15 +49,12 @@ function NewPost({ user }) {
                 })
                 .then(data => {
                     console.log('Success:', data);
-                    history.push(`/profile?userID=${user.userId}`)
-
+                    setPost({ title: '', body: '', id: null }); // Clear the form fields
+                    history.push(`/profile?userID=${user.userId}`);
                 })
                 .catch(error => {
                     console.error('There was a problem with the fetch operation:', error);
                 });
-
-            // Clear the form fields
-            setPost({ title: '', body: '' });
         } else {
             console.log('Please fill up all fields.');
         }
@@ -54,11 +64,11 @@ function NewPost({ user }) {
         <div className="text-center">
             <div id="new-post" className="justify-content-center mt-4">
                 <div className="d-flex ml-2 justify-content-start">
-                    <h3 className="main-heading">Create Post</h3>
+                    <h3 className="main-heading">{EditPost ? "Edit Post" : "Create Post"}</h3>
                 </div>
             </div>
 
-            <form id="compose-form" onSubmit={submitPost}>
+            <form id="compose-form" onSubmit={(event) => { post.id ? submitPost(event, post.id) : submitPost(event) }}>
                 <textarea
                     value={post.title}
                     onChange={(e) => setPost({ ...post, title: e.target.value })}
@@ -68,7 +78,7 @@ function NewPost({ user }) {
                 />
 
                 <textarea
-                    value={post.text}
+                    value={post.body}
                     onChange={(e) => setPost({ ...post, body: e.target.value })}
                     className="form-control-x shape-round mb-3"
                     placeholder="What's up on your mind?"
@@ -82,6 +92,7 @@ function NewPost({ user }) {
         </div>
     );
 }
+
 
 // Check
 function FixedNavbars() {
@@ -459,6 +470,15 @@ function App() {
                         )}
                     />
 
+                    <Route
+                        exact path="/edit_post"
+                        render={(props) => (
+                            <NewPost
+                                {...props}
+                                user={user}
+                            />
+                        )}
+                    />
                 </Switch>
             </BrowserRouter>
         </AuthGlobalContext.Provider>
@@ -490,7 +510,8 @@ function HandleLogout({ setUser }) {
 }
 
 function ProfilePage({ authenticated = false }) {
-
+    const [profileDetails, setProfileDetails] = useState({ 'userId': null, 'username': '', 'followers': undefined, 'following': undefined, 'profilePicUrl': '', 'selfProfile': true, 'imFollowing': undefined })
+    const [followed, setFollowed] = useState(false);
     const location = useLocation();
     const params = new URLSearchParams(location.search);
     const userId = params.get('userID')
@@ -537,8 +558,6 @@ function ProfilePage({ authenticated = false }) {
         )
     }
 
-    const [profileDetails, setProfileDetails] = useState({ 'username': '', 'followers': undefined, 'following': undefined, 'profilePicUrl': '', 'selfProfile': true, 'imFollowing': undefined })
-    const [followed, setFollowed] = useState(false);
     function HandleFollowRequest() {
 
         fetch('/follow',
@@ -549,7 +568,7 @@ function ProfilePage({ authenticated = false }) {
                     'X-CSRFToken': CSRFToken()
                 },
                 body: JSON.stringify({
-                    'userID': userId
+                    'userID': userId //to follow user id
                 })
 
             }).then(response => {
@@ -558,7 +577,7 @@ function ProfilePage({ authenticated = false }) {
                     return response.json();
                 }
             }).then(data => {
-                console.log(data.message);
+                // console.log(data.message);
                 setFollowed(!followed);
                 console.log(followed)
             })
@@ -713,7 +732,7 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
         type = params.get('category');
         console.log("AAAAAAAAAa");
         if (params.get("page") != currentPage) {
-            history.push(`/feed?category=${type}&${currentPage}`)
+            history.push(`/feed?category=${type}&page=${currentPage}`)
         }
     }
     else if (path === '/') {
@@ -771,7 +790,8 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
                 body: post.body,
                 timestamp: post.timestamp,
                 likes: post.likes,
-                comment_count: post.comment_count
+                comment_count: post.comment_count,
+                self_post: post.self_post
             });
 
             comments[post.id] = post.post_comments;
@@ -848,6 +868,10 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
         url.searchParams.set('userID', user_id);
         history.push(url.pathname + url.search);
     }
+    function updateCall(event, toEditPost) {
+        event.preventDefault();
+        history.push("/edit_post", { toEditPost });
+    }
 
     return (
         <>
@@ -875,25 +899,38 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
                                     </a>
 
                                     <div className="d-flex justify-content-between w-100">
-
-                                        <a
-                                            href="#" onClick={(e) => {
-                                                e.preventDefault()
-                                                ViewProfile(post['user_id'])
-                                            }} className="text-color-cream ml-3 me-2">
+                                        <a href="#" className="text-color-cream ml-3 me-2"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                ViewProfile(post['user_id']);
+                                            }}>
                                             {post['username']}
                                         </a>
 
-                                        <p className="text-muted mb-0 mr-3 text-end">
-                                            {post['timestamp']}
-                                        </p>
+                                        <div className="d-flex align-items-center ms-auto">
+                                            <p className="text-muted mb-0 mr-3">
+                                                {post['timestamp']}
+                                            </p>
+                                            {post.self_post && (
+                                                <a
+                                                    href="#"
+                                                    onClick={(event) => updateCall(event, { 'title': post.title, 'body': post.body, 'id': post.id })}
+                                                    className="text-color-cream mr-4">
+                                                    Edit
+                                                </a>
+                                            )}
+
+                                        </div>
                                     </div>
+
                                 </div>
 
                                 <div className="text-left ml-4 mb-4 text-color-cream" >
+
                                     <h4>
                                         {post.title}
                                     </h4>
+
                                 </div>
 
                                 <div className="text-left ml-4 text-color-cream">
