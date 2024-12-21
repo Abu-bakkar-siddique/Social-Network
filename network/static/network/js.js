@@ -548,14 +548,32 @@ function HandleLogout({ setUser }) {
     return null;
 }
 
-function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
+const LoadingSpinner = () => {
+    return (
+        <div className="flex items-center justify-center h-32">
+            <div className="relative w-12 h-12">
+                <div className="absolute w-full h-full border-4 border-gray-200 rounded-full"></div>
+                <div className="absolute w-full h-full border-4 border-t-blue-500 rounded-full animate-spin"></div>
+            </div>
+        </div>
+    );
+};
 
-    const [profileDetails, setProfileDetails] = useState({ 'userId': null, 'username': '', 'followers': undefined, 'following': undefined, 'profilePicUrl': '', 'selfProfile': true, 'imFollowing': undefined })
+function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [profileDetails, setProfileDetails] = useState({
+        'userId': null,
+        'username': '',
+        'followers': undefined,
+        'following': undefined,
+        'profilePicUrl': '',
+        'selfProfile': true,
+        'imFollowing': undefined
+    });
     const [followed, setFollowed] = useState(false);
     const location = useLocation();
     const params = new URLSearchParams(location.search);
-    const userId = params.get('userID')
-
+    const userId = params.get('userID');
 
     const handleFileUpload = (event) => {
         const file = event.target.files[0];
@@ -574,7 +592,6 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
             headers: {
                 'Accept': 'application/json',
                 'X-CSRFToken': CSRFToken(),
-
             },
             body: imageForm
         })
@@ -585,8 +602,10 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
                 return response.json();
             })
             .then(data => {
-                setProfileDetails(prevData => ({ ...prevData, profilePicUrl: data.new_profile_pic_url }));
-                console.log(`Profile picture updated successfully :${data.new_profile_pic_url}`);
+                setTimeout(() => {
+                    setProfileDetails(prevData => ({ ...prevData, profilePicUrl: data.new_profile_pic_url }));
+                    console.log(`Profile picture updated successfully :${data.new_profile_pic_url}`);
+                }, 2000)
             })
             .catch(error => {
                 console.error("Error updating profile picture:", error);
@@ -594,44 +613,38 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
     }
 
     if (!authenticated) {
-        return (
-            <h1 className="main-heading"> You are not logged in! </h1>
-        )
+        return <h1 className="main-heading">You are not logged in!</h1>;
     }
 
     function HandleFollowRequest() {
-
-        fetch('/follow',
-            {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRFToken': CSRFToken()
-                },
-                body: JSON.stringify({
-                    'userID': userId
-                })
-
-            }).then(response => {
-                if (response.ok) {
-                    console.log(`yess ${response.status}`);
-                    return response.json();
-                }
-            }).then(data => {
-                console.log(data.message);
-                setFollowed(!followed);
-                console.log(followed)
+        fetch('/follow', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRFToken': CSRFToken()
+            },
+            body: JSON.stringify({
+                'userID': userId
             })
+        }).then(response => {
+            if (response.ok) {
+                console.log(`yess ${response.status}`);
+                return response.json();
+            }
+        }).then(data => {
+            console.log(data.message);
+            setFollowed(!followed);
+            console.log(followed);
+        });
     }
+
     React.useEffect(() => {
         const params = new URLSearchParams(location.search);
         const page = parseInt(params.get('page')) || 1;
-
         setCurrentPage(page);
     }, [location.search]);
-    useEffect(() => {
 
-        // fetch users profile details here  
+    useEffect(() => {
         console.log("________________Profile Fetched________________")
         const url = new URL('/profile', window.location.origin);
         url.searchParams.append('userID', userId);
@@ -642,21 +655,16 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
                 'Accept': 'application/json',
                 'X-CSRFToken': CSRFToken()
             }
-
         }).then(response => {
             if (response.ok) {
                 console.log(`yess ${response.status}`);
                 console.log(userId);
                 return response.json();
-            }
-
-            else {
-                console.log(`someting went wrong! + ${response.status}`);
-
+            } else {
+                console.log(`something went wrong! + ${response.status}`);
                 throw new Error(`HTTP response error ${response.status}`);
             }
         }).then(profileData => {
-
             try {
                 setProfileDetails({
                     username: profileData.username,
@@ -666,17 +674,26 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
                     selfProfile: profileData.selfProfile,
                     imFollowing: profileData.imFollowing
                 });
-
+                setInitialLoading(false);
             } catch (err) {
                 console.error("Error setting state:", err);
-                throw err; // Ensures the catch block is hit
+                setInitialLoading(false);
+                throw err;
             }
+        }).catch(error => {
+            console.error("Error fetching profile:", error);
+            setInitialLoading(false);
         });
     }, [userId, followed, currentPage]);
+
+    if (initialLoading) {
+        return <LoadingSpinner />;
+    }
+
     return (
         <>
             <div className="profile-container justify-content-center align-items-center mt-5">
-                <div className=" text-center text-color-cream mt-4">
+                <div className="text-center text-color-cream mt-4">
                     <div className="mt-4">
                         {profileDetails.selfProfile &&
                             <div>
@@ -713,11 +730,8 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
                             </div>
                         }
                     </div>
-                    <div className="mt-3 text-center ">
+                    <div className="mt-3 text-center">
                         <h4 className="mb-2 username-size">{profileDetails.username}</h4>
-
-                        {/* This button is conditional, means it should'nt apear if user is viewing own profile 
-                    and follow OR unfollow accordingly*/}
                         {!profileDetails.selfProfile && (
                             profileDetails.imFollowing ? (
                                 <button onClick={HandleFollowRequest} className="btn-prim follow shape-round col-2">
@@ -733,7 +747,6 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
                             <div className="text-size-2">
                                 <h6 className="mb-0 col-6 text-size-2">Followers</h6>
                                 <span>{profileDetails.followers}</span>
-
                             </div>
                             <div className="text-size-2">
                                 <h6 className="mb-0 col-6 text-size-2">Following</h6>
@@ -744,21 +757,18 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
                 </div>
             </div>
             <div className="mt-3">
-
                 <AllPosts userId={userId} profileDetails={profileDetails} currentPage={currentPage} setCurrentPage={setCurrentPage} />
             </div>
         </>
-    )
-}
-
-// user is undefined means fetch all posts, not specific to any user
+    );
+}// user is undefined means fetch all posts, not specific to any user
 function AllPosts({ userId = null, profileDetails = undefined, currentPage, setCurrentPage }) {
-
+    const [loader, setLoader] = useState(true);
     const [posts, setPosts] = useState([]); // all posts
     const [comments, setComments] = useState([]); // all comments 
     const [CurrentUserProfilePic, setCurrentUserProfilePic] = useState('');
     const [comment, setComment] = useState('');
-    const [like, setLike] = useState({ 'type': '', 'id': undefined });
+    const [like, setLike] = useState({ 'type': undefined, 'id': undefined });
     const [pageRequest, setPageRequest] = useState(false);
     const [commentPost, setCommentPost] = useState(0)
 
@@ -768,7 +778,6 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
     const params = new URLSearchParams(location.search);
     let type = null;
 
-    console.log(`The parameters are : ${params}`);
 
     // this checks if on profilePage
     if (userId) {
@@ -905,6 +914,7 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
         setComment('');
     }
 
+
     React.useEffect(() => {
         const params = new URLSearchParams(location.search);
         const page = parseInt(params.get('page')) || 1;
@@ -931,9 +941,12 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
             // Call update posts here 
             updatePosts(data.posts);
             setCurrentUserProfilePic(data.current_user_profile_pic);
+            setLoader(false);
         }).catch(e => {
+            setLoader(false);
             console.log(e);
         });
+        setLoader(false);
     }, [like, pageRequest, commentPost, profileDetails, currentPage, type]);
 
     function ViewProfile(user_id) {
@@ -943,6 +956,9 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
         history.push(url.pathname + url.search);
     }
 
+    if (loader) {
+        return <LoadingSpinner />
+    }
 
     return (
         <>
