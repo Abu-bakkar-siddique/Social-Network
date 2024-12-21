@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
-from django.core.paginator import Paginator
+from django.core.paginator import Paginator, EmptyPage
 from django.shortcuts import render
 from django.core.serializers import serialize
 from django.db.models import Count
@@ -148,8 +148,8 @@ def profile(request):
         return JsonResponse({'message': f'An unexpected error occurred: {str(e)}'}, status=500)
 
 def feed (request) :    
+
     if request.method == 'GET' and request.accepts('text/html'):
-        print("AAAAAAAAAAAAAA")
         return render(request, "network/index.html", status=200)
     
     if request.method == "GET":
@@ -174,11 +174,22 @@ def feed (request) :
             posts = Post.objects.filter(user=User.objects.get(pk=int(category))).order_by('-timestamp')
     
         # returning empty all_posts array if no posts at all  
-        if not posts: return JsonResponse({"posts" : all_posts}, status = 200)
+        if not posts: return JsonResponse({"posts" : all_posts, 'hasNextPage' : False}, status = 200)
+        
         posts = posts.annotate(post_likes = Count('user_likes'))
-        posts = Paginator(posts, 10)
+        
+        posts = Paginator(posts, 10, allow_empty_first_page=False)
+        
+        # checking for the existence of next page.
+        try:
+            next_page = posts.page(int(page) + 1)
+            has_next_page = True
+        except EmptyPage:
+            has_next_page = False
+        
         posts = posts.get_page(int(page))
-
+        
+        print( has_next_page and "the feed has a next page to show")
         for post in posts.object_list:
             comments = []   
             comment_count = 0
@@ -210,12 +221,13 @@ def feed (request) :
                 'likes' : post.post_likes,
                 'post_comments' : comments,
                 'comment_count' : comment_count,
-                'actual_timestamp' : post.timestamp
+                'actual_timestamp' : post.timestamp,
+                'self_post' : int(post.user.pk) == int(request.user.pk)
             }
 
             all_posts.append(p)
 
-        return JsonResponse({"posts" : all_posts}, status = 200) # success
+        return JsonResponse({"posts" : all_posts, 'hasNextPage' : has_next_page}, status = 200) # success
 
     #post request handler
     else :
