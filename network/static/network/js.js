@@ -712,8 +712,7 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
     const [like, setLike] = useState({ 'type': '', 'id': undefined });
     const [currentPage, setCurrentPage] = useState(1);
     const [pageRequest, setPageRequest] = useState(false);
-    const [commentPost, setCommentPost] = useState(0);
-    const [hasNextPage, setHasNextPage] = useState(false);
+    const [commentPost, setCommentPost] = useState(0)
 
     const location = useLocation();
     const history = useHistory();
@@ -796,7 +795,7 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
 
             comments[post.id] = post.post_comments;
         });
-        console.log(`total posts fetched : ${posts.length}`);
+
         setPosts(posts);
         setComments(comments);
     }
@@ -824,6 +823,7 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
         }
         else {
             history.push(`/feed?${params.toString()}`);
+
         }
         setCurrentPage(newPage); // Sync state with URL
     }
@@ -864,13 +864,11 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
         setCurrentPage(page);
     }, [location.search]);
 
-
     React.useEffect(() => {
+        console.log("Control was here.");
         const url = new URL('/feed', window.location.origin); // or another base URL
         url.searchParams.append('category', type);
-        console.log(`the page being requested is : ${currentPage}`);
         url.searchParams.append('page', currentPage);
-
         fetch(url, {
             method: 'GET',
             headers: {
@@ -883,9 +881,7 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
             return response.json();
         }).then(data => {
             // Call update posts here 
-            console.log(`total number of posts is (read from the useEffect): ${data.posts.length}`);
             updatePosts(data.posts);
-            setHasNextPage(data.hasNextPage);
         }).catch(e => {
             console.log(e);
         });
@@ -932,6 +928,7 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
                                             }} className="text-color-cream ml-3 me-2">
                                             {post['username']}
                                         </a>
+
                                         <p className="text-muted mb-0 mr-3 text-end">
                                             {post['timestamp']}
                                         </p>
@@ -1058,15 +1055,15 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
                         {currentPage > 1 && (
                             <button className="btn-prim mr-4 col-2 shape-round"
                                 onClick={() => togglePrevious()}
-                            >
+                                disabled={currentPage <= 1}>
                                 Previous
                             </button>
                         )}
 
-                        {hasNextPage && (
+                        {posts.length >= 10 && (
                             <button className="btn-prim shape-round col-2"
                                 onClick={() => toggleNext()}
-                            >
+                                disabled={posts.length < 10}>
                                 Next
                             </button>
                         )}
