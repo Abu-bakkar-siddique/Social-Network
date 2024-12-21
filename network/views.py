@@ -1,5 +1,5 @@
 from django.contrib.auth import authenticate, login, logout
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.core.paginator import Paginator
@@ -121,8 +121,8 @@ def profile(request):
 
     try:
         this_user = User.objects.filter(pk=user_id).annotate(
-            all_followers=Count('followers'),
-            all_following=Count('following')
+            all_followers=Count('followers', distinct = True),
+            all_following=Count('following', distinct = True)
         ).first()    
 
         im_following = None
@@ -149,7 +149,6 @@ def profile(request):
 
 def feed (request) :    
     if request.method == 'GET' and request.accepts('text/html'):
-        print("AAAAAAAAAAAAAA")
         return render(request, "network/index.html", status=200)
     
     if request.method == "GET":
@@ -210,12 +209,13 @@ def feed (request) :
                 'likes' : post.post_likes,
                 'post_comments' : comments,
                 'comment_count' : comment_count,
-                'actual_timestamp' : post.timestamp
+                'actual_timestamp' : post.timestamp,
+                'self_post' : int(post.user.pk) == int(request.user.pk)
             }
 
             all_posts.append(p)
 
-        return JsonResponse({"posts" : all_posts}, status = 200) # success
+        return JsonResponse({"posts" : all_posts, 'current_user_profile_pic' : request.user.profile_picture.url}, status = 200) # success
 
     #post request handler
     else :
@@ -268,17 +268,39 @@ def follow_unfollow_request(request):
     to_follow_user = User.objects.get(pk = to_follow_user_id) 
     following = None
 
-    if current_user.following.filter(pk=to_follow_user_id).exists():
-        current_user.following.remove(to_follow_user)
-        to_follow_user.followers.remove(current_user)
+    with transaction.atomic():
+        if current_user.following.filter(pk=to_follow_user_id).exists():
+            current_user.following.remove(to_follow_user)
+            to_follow_user.followers.remove(current_user)
 
-    else:
-        current_user.following.add(to_follow_user)
-        to_follow_user.followers.add(current_user)
-    current_user.save()
+        else:
+            current_user.following.add(to_follow_user)
+            to_follow_user.followers.add(current_user)
+        current_user.save()
 
-    following_people = current_user.following.all()
+        following_people = current_user.following.all()
     for f in following_people:
         print(f.username) 
     
     return JsonResponse({'message' : 'follow/unfollow request successful'},status = 200)
+
+def edit_post(request):
+    try:
+        body = json.loads(request.body)
+        
+
+        if 'postId' not in body or 'title' not in body or 'body' not in body:
+            return JsonResponse({"error": "Invalid data"}, status=400)
+
+        post = Post.objects.get(pk=body['postId'])
+        if int(post.user.pk) != int(request.user.pk) : return JsonResponse({"message" : "Cannot Edit someone elses post"})
+        post.title = body['title']
+        post.text = body['body']
+        post.save()
+
+        return JsonResponse({"message": "Post edited successfully"}, status=200)
+
+    except ObjectDoesNotExist:
+        return JsonResponse({"error": "Post not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"error": f"Something went wrong: {str(e)}"}, status=500)

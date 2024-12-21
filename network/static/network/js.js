@@ -10,23 +10,48 @@ function CSRFToken() {
 
 // Check
 function NewPost({ user }) {
-    const [post, setPost] = React.useState({ title: '', body: '' });
+    const [post, setPost] = React.useState({ 'title': '', 'body': '', 'postId': null });
     const history = useHistory();
+    const location = useLocation();
 
-    const submitPost = (event) => {
+    let EditPost = location.state ? location.state.post : null;
+
+    // checking for the post edit call
+    React.useEffect(() => {
+        if (EditPost) {
+            console.log("Edit post request "); ~
+                console.log("post title :" + EditPost.title);
+            console.log("post body :" + EditPost.body);
+
+            setPost({ title: EditPost.title, body: EditPost.body, postId: EditPost.postId });
+        } else {
+            console.log("Nope!");
+        }
+    }, [])
+
+    function submitPost(event, postId = null) {
+
         event.preventDefault();
+        let body = postId ? JSON.stringify({
+            'title': post.title,
+            'body': post.body,
+            'postId': post.postId
+        }) :
+            JSON.stringify({
+                'title': post.title,
+                'body': post.body,
+            })
+
+        const url = postId ? '/edit_post' : '/create_post';
 
         if (post.title && post.body) {
-            fetch('/create_post', {
+            fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': CSRFToken(),
                 },
-                body: JSON.stringify({
-                    'title': post.title,
-                    'body': post.body
-                }),
+                body: body,
             })
                 .then(response => {
                     if (!response.ok) {
@@ -44,7 +69,7 @@ function NewPost({ user }) {
                 });
 
             // Clear the form fields
-            setPost({ title: '', body: '' });
+            setPost({ title: '', body: '', postId: null });
         } else {
             console.log('Please fill up all fields.');
         }
@@ -58,7 +83,7 @@ function NewPost({ user }) {
                 </div>
             </div>
 
-            <form id="compose-form" onSubmit={submitPost}>
+            <form id="compose-form" onSubmit={(event) => { EditPost ? submitPost(event, post.postId) : submitPost(event) }}>
                 <textarea
                     value={post.title}
                     onChange={(e) => setPost({ ...post, title: e.target.value })}
@@ -68,7 +93,7 @@ function NewPost({ user }) {
                 />
 
                 <textarea
-                    value={post.text}
+                    value={post.body}
                     onChange={(e) => setPost({ ...post, body: e.target.value })}
                     className="form-control-x shape-round mb-3"
                     placeholder="What's up on your mind?"
@@ -76,7 +101,13 @@ function NewPost({ user }) {
                 />
 
                 <div className="d-flex justify-content-end">
-                    <button id="post-btn" type="submit" className="btn btn-prim shape-round col-2">Post</button>
+
+                    {EditPost && (
+                        <button id="post-btn" type="submit" className="btn btn-prim shape-round col-2">Save</button>
+                    )}
+                    {!EditPost && (
+                        <button id="post-btn" type="submit" className="btn btn-prim shape-round col-2">Post</button>
+                    )}
                 </div>
             </form>
         </div>
@@ -84,7 +115,7 @@ function NewPost({ user }) {
 }
 
 // Check
-function FixedNavbars() {
+function FixedNavbars({ setCurrentPage, currentPage }) {
     const { user } = useContext(AuthGlobalContext)
     return (
         <>
@@ -104,12 +135,12 @@ function FixedNavbars() {
                         {user.authenticated && (
                             <li className="nav-item">
                                 {/* add an image here with the username */}
-                                <Link className="nav-link" to={`/profile?userID=${user.userId}`}><strong>{user.username}</strong></Link>
+                                <Link className="nav-link" onClick={() => setCurrentPage(1)} to={`/profile?userID=${user.userId}`}><strong>{user.username}</strong></Link>
                             </li>
                         )}
 
                         <li className="nav-item">
-                            <Link className="nav-link" to="/feed?category=all&page=1">All Posts</Link>
+                            <Link className="nav-link" onClick={() => setCurrentPage(1)} to={`/feed?category=all&page=${currentPage}`}>All Posts</Link>
                         </li>
 
                         {user.authenticated && (
@@ -119,7 +150,7 @@ function FixedNavbars() {
                                     <Link className="nav-link" to="/create_post">Create Post</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link" to="/feed?category=following&page=1">Following</Link>
+                                    <Link className="nav-link" onClick={() => setCurrentPage(1)} to={`/feed?category=following&page=${currentPage}`}>Following</Link>
                                 </li>
                                 <li className="nav-item">
                                     <Link className="nav-link" to="/logout">Log Out</Link>
@@ -335,7 +366,6 @@ function Register() {
 }
 
 // LEFT OF HERE 
-let userAuthenticated = false;
 const AuthGlobalContext = createContext();
 
 function App() {
@@ -395,8 +425,9 @@ function App() {
     return (
 
         <AuthGlobalContext.Provider value={{ user, setUser }}>
+
             <BrowserRouter>
-                <FixedNavbars />
+                <FixedNavbars currentPage={currentPage} setCurrentPage={setCurrentPage} />
                 <Switch>
                     {/* Directly use component prop for most routes */}
 
@@ -412,10 +443,21 @@ function App() {
                         )}
                     />
                     <Route
+                        exact path="/edit_post"
+                        render={(props) => (
+                            <NewPost
+                                {...props}
+                                user={user}
+                            />
+                        )}
+                    />
+
+                    <Route
                         exact path="/"
                         render={(props) => (
                             <AllPosts
                                 {...props}
+                                currentPage={currentPage} setCurrentPage={setCurrentPage}
                                 profileDetails={undefined}
                             />
                         )}
@@ -426,6 +468,7 @@ function App() {
                         render={(props) => (
                             <AllPosts
                                 {...props}
+                                currentPage={currentPage} setCurrentPage={setCurrentPage}
                                 profileDetails={undefined}
                             />
                         )}
@@ -458,7 +501,8 @@ function App() {
                         render={(props) => (
                             <ProfilePage
                                 {...props}
-                                // userId={user.userId}
+                                setCurrentPage={setCurrentPage}
+                                currentPage={currentPage}
                                 authenticated={user.authenticated}
                             />
                         )}
@@ -473,6 +517,7 @@ function App() {
                             />
                         )}
                     />
+
                 </Switch>
             </BrowserRouter>
         </AuthGlobalContext.Provider>
@@ -503,12 +548,14 @@ function HandleLogout({ setUser }) {
     return null;
 }
 
-function ProfilePage({ authenticated = false }) {
+function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
+
     const [profileDetails, setProfileDetails] = useState({ 'userId': null, 'username': '', 'followers': undefined, 'following': undefined, 'profilePicUrl': '', 'selfProfile': true, 'imFollowing': undefined })
     const [followed, setFollowed] = useState(false);
     const location = useLocation();
     const params = new URLSearchParams(location.search);
     const userId = params.get('userID')
+
 
     const handleFileUpload = (event) => {
         const file = event.target.files[0];
@@ -697,20 +744,21 @@ function ProfilePage({ authenticated = false }) {
                 </div>
             </div>
             <div className="mt-3">
-                <AllPosts userId={userId} profileDetails={profileDetails} />
+
+                <AllPosts userId={userId} profileDetails={profileDetails} currentPage={currentPage} setCurrentPage={setCurrentPage} />
             </div>
         </>
     )
 }
 
 // user is undefined means fetch all posts, not specific to any user
-function AllPosts({ userId = null, profileDetails = undefined }) { // providing default props
+function AllPosts({ userId = null, profileDetails = undefined, currentPage, setCurrentPage }) {
 
     const [posts, setPosts] = useState([]); // all posts
     const [comments, setComments] = useState([]); // all comments 
+    const [CurrentUserProfilePic, setCurrentUserProfilePic] = useState('');
     const [comment, setComment] = useState('');
     const [like, setLike] = useState({ 'type': '', 'id': undefined });
-    const [currentPage, setCurrentPage] = useState(1);
     const [pageRequest, setPageRequest] = useState(false);
     const [commentPost, setCommentPost] = useState(0)
 
@@ -726,15 +774,12 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
     if (userId) {
         type = userId;
     }
+
     //feed page check
     else if (path === '/feed') {
-
         type = params.get('category');
-        console.log("AAAAAAAAAa");
-        if (params.get("page") != currentPage) {
-            history.push(`/feed?category=${type}&page=${currentPage}`)
-        }
     }
+
     else if (path === '/') {
         type = 'all';
     }
@@ -790,7 +835,8 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
                 body: post.body,
                 timestamp: post.timestamp,
                 likes: post.likes,
-                comment_count: post.comment_count
+                comment_count: post.comment_count,
+                selfPost: post.self_post
             });
 
             comments[post.id] = post.post_comments;
@@ -856,7 +902,9 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
         }).catch(e => {
             console.log(e);
         });
+        setComment('');
     }
+
     React.useEffect(() => {
         const params = new URLSearchParams(location.search);
         const page = parseInt(params.get('page')) || 1;
@@ -882,10 +930,11 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
         }).then(data => {
             // Call update posts here 
             updatePosts(data.posts);
+            setCurrentUserProfilePic(data.current_user_profile_pic);
         }).catch(e => {
             console.log(e);
         });
-    }, [like, pageRequest, commentPost, profileDetails, currentPage, type]); // Dependencies
+    }, [like, pageRequest, commentPost, profileDetails, currentPage, type]);
 
     function ViewProfile(user_id) {
         const url = new URL(window.location.href);
@@ -893,6 +942,7 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
         url.searchParams.set('userID', user_id);
         history.push(url.pathname + url.search);
     }
+
 
     return (
         <>
@@ -920,19 +970,34 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
                                     </a>
 
                                     <div className="d-flex justify-content-between w-100">
-
                                         <a
-                                            href="#" onClick={(e) => {
-                                                e.preventDefault()
-                                                ViewProfile(post['user_id'])
-                                            }} className="text-color-cream ml-3 me-2">
+                                            href="#"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                ViewProfile(post['user_id']);
+                                            }}
+                                            className="text-color-cream ml-3 me-2"
+                                        >
                                             {post['username']}
                                         </a>
 
-                                        <p className="text-muted mb-0 mr-3 text-end">
-                                            {post['timestamp']}
-                                        </p>
+                                        <div className="d-flex align-items-center">
+                                            <p className="text-muted mb-0 mr-3 text-end">{post['timestamp']}</p>
+                                            {post['selfPost'] && (
+                                                <a
+                                                    href="#"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        history.push('/edit_post', { post: { 'title': post.title, 'body': post.body, 'postId': post.id } })
+                                                    }}
+                                                    className="text-color-cream mr-3 me-2"
+                                                >
+                                                    Edit
+                                                </a>
+                                            )}
+                                        </div>
                                     </div>
+
                                 </div>
 
                                 <div className="text-left ml-4 mb-4 text-color-cream" >
@@ -988,7 +1053,7 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
                                         }} className="text-color-cream ml-3 me-2">
 
                                             <img
-                                                src={post.profile_pic_url}
+                                                src={CurrentUserProfilePic}
                                                 className="border profile-pic-height rounded-circle me-2"
                                                 alt="Avatar"
                                                 width="40"
@@ -1004,7 +1069,7 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
                                                 placeholder="Write a comment"
                                             />
 
-                                            <a href="#" onClick={() => addComment(post.id)} className="text-color-cream ml-3 me-2">
+                                            <a onClick={() => addComment(post.id)} className="text-color-cream ml-3 me-2">
                                                 post comment
                                             </a>
                                         </div>
@@ -1015,7 +1080,7 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
                                             <div key={idx} className="d-flex mr-3 mt-2 border-bottom">
 
                                                 <a
-                                                    href="#" onClick={(e) => {
+                                                    onClick={(e) => {
                                                         e.preventDefault()
                                                         ViewProfile(comnt['userId'])
                                                     }} className="text-color-cream ml-3 me-2">
@@ -1075,4 +1140,5 @@ function AllPosts({ userId = null, profileDetails = undefined }) { // providing 
         </>
     );
 }
+
 ReactDOM.render(<App />, document.querySelector("#root"));
