@@ -116,7 +116,7 @@ function NewPost({ user }) {
 
 // Check
 function FixedNavbars({ setCurrentPage, currentPage }) {
-    const { user } = useContext(AuthGlobalContext)
+    const { user } = useContext(AuthGlobalContext);
     return (
         <>
             <div className="topnav">
@@ -129,7 +129,7 @@ function FixedNavbars({ setCurrentPage, currentPage }) {
             <div>
                 <nav className="sidebar">
 
-                    <Link className="navbar-brand" to="/">Word Flow</Link>
+                    <Link className="navbar-brand" to="/">NetWork</Link>
 
                     <ul className="navbar-nav">
                         {user.authenticated && (
@@ -771,6 +771,7 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
     const [like, setLike] = useState({ 'type': undefined, 'id': undefined });
     const [pageRequest, setPageRequest] = useState(false);
     const [commentPost, setCommentPost] = useState(0)
+    const { user } = useContext(AuthGlobalContext);
 
     const location = useLocation();
     const history = useHistory();
@@ -1065,7 +1066,7 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
 
                                         <a href="#" onClick={(e) => {
                                             e.preventDefault()
-                                            ViewProfile(post['user_id'])
+                                            ViewProfile(user.userId)
                                         }} className="text-color-cream ml-3 me-2">
 
                                             <img
@@ -1085,7 +1086,7 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
                                                 placeholder="Write a comment"
                                             />
 
-                                            <a href="" onClick={() => addComment(post.id)} className="text-color-cream ml-3 me-2">
+                                            <a href="#" onClick={() => addComment(post.id)} className="text-color-cream ml-3 me-2">
                                                 post comment
                                             </a>
                                         </div>

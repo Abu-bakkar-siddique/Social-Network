@@ -304,3 +304,6 @@ def edit_post(request):
         return JsonResponse({"error": "Post not found"}, status=404)
     except Exception as e:
         return JsonResponse({"error": f"Something went wrong: {str(e)}"}, status=500)
+
+def for_o_for(request, exception):
+    return render (request ,'network/for_o_for.html', 404)
