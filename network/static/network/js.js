@@ -84,7 +84,7 @@ function NewPost({ user }) {
 }
 
 // Check
-function FixedNavbars({ setCurrentPage, currentPage }) {
+function FixedNavbars() {
     const { user } = useContext(AuthGlobalContext)
     return (
         <>
@@ -104,12 +104,12 @@ function FixedNavbars({ setCurrentPage, currentPage }) {
                         {user.authenticated && (
                             <li className="nav-item">
                                 {/* add an image here with the username */}
-                                <Link className="nav-link" onClick={() => setCurrentPage(1)} to={`/profile?userID=${user.userId}`}><strong>{user.username}</strong></Link>
+                                <Link className="nav-link" to={`/profile?userID=${user.userId}`}><strong>{user.username}</strong></Link>
                             </li>
                         )}
 
                         <li className="nav-item">
-                            <Link className="nav-link" onClick={() => setCurrentPage(1)} to={`/feed?category=all&page=${currentPage}`}>All Posts</Link>
+                            <Link className="nav-link" to="/feed?category=all&page=1">All Posts</Link>
                         </li>
 
                         {user.authenticated && (
@@ -119,7 +119,7 @@ function FixedNavbars({ setCurrentPage, currentPage }) {
                                     <Link className="nav-link" to="/create_post">Create Post</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link" onClick={() => setCurrentPage(1)} to={`/feed?category=following&page=${currentPage}`}>Following</Link>
+                                    <Link className="nav-link" to="/feed?category=following&page=1">Following</Link>
                                 </li>
                                 <li className="nav-item">
                                     <Link className="nav-link" to="/logout">Log Out</Link>
@@ -335,6 +335,7 @@ function Register() {
 }
 
 // LEFT OF HERE 
+let userAuthenticated = false;
 const AuthGlobalContext = createContext();
 
 function App() {
@@ -394,9 +395,8 @@ function App() {
     return (
 
         <AuthGlobalContext.Provider value={{ user, setUser }}>
-
             <BrowserRouter>
-                <FixedNavbars currentPage={currentPage} setCurrentPage={setCurrentPage} />
+                <FixedNavbars />
                 <Switch>
                     {/* Directly use component prop for most routes */}
 
@@ -411,13 +411,11 @@ function App() {
                             />
                         )}
                     />
-
                     <Route
                         exact path="/"
                         render={(props) => (
                             <AllPosts
                                 {...props}
-                                currentPage={currentPage} setCurrentPage={setCurrentPage}
                                 profileDetails={undefined}
                             />
                         )}
@@ -428,7 +426,6 @@ function App() {
                         render={(props) => (
                             <AllPosts
                                 {...props}
-                                currentPage={currentPage} setCurrentPage={setCurrentPage}
                                 profileDetails={undefined}
                             />
                         )}
@@ -461,8 +458,7 @@ function App() {
                         render={(props) => (
                             <ProfilePage
                                 {...props}
-                                setCurrentPage={setCurrentPage}
-                                currentPage={currentPage}
+                                // userId={user.userId}
                                 authenticated={user.authenticated}
                             />
                         )}
@@ -477,7 +473,6 @@ function App() {
                             />
                         )}
                     />
-
                 </Switch>
             </BrowserRouter>
         </AuthGlobalContext.Provider>
@@ -508,7 +503,7 @@ function HandleLogout({ setUser }) {
     return null;
 }
 
-function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
+function ProfilePage({ authenticated = false }) {
     const [profileDetails, setProfileDetails] = useState({ 'userId': null, 'username': '', 'followers': undefined, 'following': undefined, 'profilePicUrl': '', 'selfProfile': true, 'imFollowing': undefined })
     const [followed, setFollowed] = useState(false);
     const location = useLocation();
@@ -702,20 +697,20 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
                 </div>
             </div>
             <div className="mt-3">
-
-                <AllPosts userId={userId} profileDetails={profileDetails} currentPage={currentPage} setCurrentPage={setCurrentPage} />
+                <AllPosts userId={userId} profileDetails={profileDetails} />
             </div>
         </>
     )
 }
 
 // user is undefined means fetch all posts, not specific to any user
-function AllPosts({ userId = null, profileDetails = undefined, currentPage, setCurrentPage }) {
+function AllPosts({ userId = null, profileDetails = undefined }) { // providing default props
 
     const [posts, setPosts] = useState([]); // all posts
     const [comments, setComments] = useState([]); // all comments 
     const [comment, setComment] = useState('');
     const [like, setLike] = useState({ 'type': '', 'id': undefined });
+    const [currentPage, setCurrentPage] = useState(1);
     const [pageRequest, setPageRequest] = useState(false);
     const [commentPost, setCommentPost] = useState(0);
     const [hasNextPage, setHasNextPage] = useState(false);
@@ -732,12 +727,15 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
     if (userId) {
         type = userId;
     }
-
     //feed page check
     else if (path === '/feed') {
-        type = params.get('category');
-    }
 
+        type = params.get('category');
+        console.log("AAAAAAAAAa");
+        if (params.get("page") != currentPage) {
+            history.push(`/feed?category=${type}&page=${currentPage}`)
+        }
+    }
     else if (path === '/') {
         type = 'all';
     }
@@ -859,7 +857,6 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
             console.log(e);
         });
     }
-
     React.useEffect(() => {
         const params = new URLSearchParams(location.search);
         const page = parseInt(params.get('page')) || 1;
