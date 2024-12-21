@@ -1085,7 +1085,7 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
                                                 placeholder="Write a comment"
                                             />
 
-                                            <a onClick={() => addComment(post.id)} className="text-color-cream ml-3 me-2">
+                                            <a href="" onClick={() => addComment(post.id)} className="text-color-cream ml-3 me-2">
                                                 post comment
                                             </a>
                                         </div>
