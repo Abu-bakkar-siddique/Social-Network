@@ -204,6 +204,10 @@ def feed (request) :
 
             if not request.user.is_anonymous and int(request.user.pk) == int(post.user.pk):
                 self_post = True
+                print(request.user.username)
+
+            if not request.user.is_anonymous:
+                print(request.user.username)
                 current_user_profile_pic = request.user.profile_picture.url
 
             p = {

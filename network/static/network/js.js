@@ -778,7 +778,6 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
     const params = new URLSearchParams(location.search);
     let type = null;
 
-
     // this checks if on profilePage
     if (userId) {
         type = userId;
@@ -924,6 +923,7 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
         const url = new URL('/feed', window.location.origin); // or another base URL
         url.searchParams.append('category', type);
         url.searchParams.append('page', currentPage);
+
         fetch(url, {
             method: 'GET',
             headers: {
@@ -935,8 +935,10 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
             if (!response.ok) throw new Error(response.status);
             return response.json();
         }).then(data => {
+
             // Call update posts here 
             updatePosts(data.posts);
+            console.log(data.current_user_profile_pic);
             setCurrentUserProfilePic(data.current_user_profile_pic);
             setLoader(false);
         }).catch(e => {
