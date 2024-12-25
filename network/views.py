@@ -1,5 +1,6 @@
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError, transaction
+from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.core.paginator import Paginator
@@ -26,7 +27,7 @@ def index(request):
             userInfo = {'username' : None, 'authenticated' : False, 'userId': this_user.pk}
             return JsonResponse(userInfo, status =401)
     return render(request, "network/index.html", status=200)
-@csrf_exempt
+
 def login_view(request):
     if request.method == 'GET' and request.accepts('text/html') :
         return render(request, "network/index.html", status=200) 
@@ -49,7 +50,6 @@ def logout_view(request):
     logout(request)
     return JsonResponse({'message' : 'logout successful'}, status = 200)
 
-@csrf_exempt
 def register(request):
     if request.method == 'GET' and request.accepts('text/html') :
         return render(request, "network/index.html", status=200) 
@@ -76,6 +76,7 @@ def register(request):
         login(request, user)
         return  JsonResponse({"message": "Registeration successful.", "userId": user.pk},status = 200)
 
+@login_required(login_url="/login")
 def create_post(request):
 
     if request.method == 'GET' and request.accepts('text/html') :
@@ -98,7 +99,7 @@ def create_post(request):
         return JsonResponse({'message': 'Post created successfully', 'post_id': post.id}, status=200)
     return JsonResponse({'error': 'Invalid request method'}, status=405)  # Method not allowed
 
-@csrf_exempt
+@login_required(login_url="/login")
 def profile(request):
     # If it's a GET request with Accept header for HTML, render the main page
     if request.method == 'GET' and request.accepts('text/html'):
@@ -266,7 +267,8 @@ def feed (request) :
 
         return JsonResponse({'message' : 'operation successful!'}, status = 200)
 
-# @login_required
+
+@login_required(login_url="/login")
 def follow_unfollow_request(request):
     
     current_user = request.user 

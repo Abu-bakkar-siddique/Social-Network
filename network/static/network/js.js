@@ -645,7 +645,6 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
     }, [location.search]);
 
     useEffect(() => {
-        console.log("________________Profile Fetched________________")
         const url = new URL('/profile', window.location.origin);
         url.searchParams.append('userID', userId);
 
@@ -922,7 +921,6 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
     }, [location.search]);
 
     React.useEffect(() => {
-        console.log("Control was here.");
         const url = new URL('/feed', window.location.origin); // or another base URL
         url.searchParams.append('category', type);
         url.searchParams.append('page', currentPage);
@@ -1033,6 +1031,7 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
                                             data-mdb-ripple-color="dark"
                                             onClick={(e) => {
                                                 if (!user.authenticated) {
+                                                    console.log(`cant like the post${user.authenticated}`);
                                                     e.preventDefault(); // Prevent click action if not authenticated
                                                 } else {
                                                     updateLikes(post.id, 'post');
@@ -1096,7 +1095,6 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
                                         </div>
                                     )}
 
-
                                     <div className="mt-5">
                                         {comments[post.id]?.map((comnt, idx) => (
                                             <div key={idx} className="d-flex mr-3 mt-2 border-bottom">
@@ -1126,7 +1124,7 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
                                                             if (!user.authenticated) {
                                                                 e.preventDefault(); // Prevent click action if not authenticated
                                                             } else {
-                                                                updateLikes(comnt.id, 'post');
+                                                                updateLikes(comnt.id, 'comment');
                                                             }
                                                         }} data-mdb-button-init
                                                         data-mdb-ripple-init
