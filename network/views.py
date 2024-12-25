@@ -197,7 +197,14 @@ def feed (request) :
                         'comment_post' : comment.post.pk
                     }
                     comments.append(c)
-                          
+
+            self_post = False
+            current_user_profile_pic = ""
+
+            if not request.user.is_anonymous and int(request.user.pk) == int(post.user.pk):
+                self_post = True
+                current_user_profile_pic = request.user.profile_picture.url
+
             p = {
                 'id' : post.pk,
                 'username': post.user.username,
@@ -210,12 +217,12 @@ def feed (request) :
                 'post_comments' : comments,
                 'comment_count' : comment_count,
                 'actual_timestamp' : post.timestamp,
-                'self_post' : int(post.user.pk) == int(request.user.pk)
+                'self_post' : self_post
             }
-
             all_posts.append(p)
 
-        return JsonResponse({"posts" : all_posts, 'current_user_profile_pic' : request.user.profile_picture.url}, status = 200) # success
+
+        return JsonResponse({"posts" : all_posts, 'current_user_profile_pic' : current_user_profile_pic}, status = 200) # success
 
     #post request handler
     else :

@@ -865,7 +865,6 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
         }
         else {
             history.push(`/feed?${params.toString()}`);
-
         }
         setCurrentPage(newPage); // Sync state with URL
     }
@@ -877,9 +876,9 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
         if (profileDetails) {
             history.push(`/profile?${params.toString()}`);
         }
+
         else {
             history.push(`/feed?${params.toString()}`);
-
         }
         setCurrentPage(newPage); // Sync state with URL
     }
@@ -914,7 +913,6 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
         });
         setComment('');
     }
-
 
     React.useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -985,7 +983,6 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
                                             width="40"
                                         />
                                     </a>
-
                                     <div className="d-flex justify-content-between w-100">
                                         <a
                                             href="#"
@@ -1032,14 +1029,19 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
                                         {/* like update button */}
                                         <a
                                             type="button"
-                                            data-mdb-button-init
-                                            data-mdb-ripple-init
-                                            onClick={() => updateLikes(post.id, 'post')}
-                                            className="btn btn-link text-color-cream btn-lg"
+                                            className={`btn btn-link text-color-cream btn-lg ${!user.authenticated ? 'disabled' : ''}`}
                                             data-mdb-ripple-color="dark"
+                                            onClick={(e) => {
+                                                if (!user.authenticated) {
+                                                    e.preventDefault(); // Prevent click action if not authenticated
+                                                } else {
+                                                    updateLikes(post.id, 'post');
+                                                }
+                                            }}
                                         >
                                             <i className="fas fa-heart text-danger"></i> {post.likes}
                                         </a>
+
                                         {/* update comments this doesnt work, just here for aesthetics */}
                                         <a
                                             type="button"
@@ -1062,35 +1064,38 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
                                         </a>
                                     </div>
 
-                                    <div className="d-flex mr-3">
+                                    {user.authenticated && (
+                                        <div className="d-flex mr-3">
 
-                                        <a href="#" onClick={(e) => {
-                                            e.preventDefault()
-                                            ViewProfile(user.userId)
-                                        }} className="text-color-cream ml-3 me-2">
+                                            <a href="#" onClick={(e) => {
+                                                e.preventDefault()
+                                                ViewProfile(user.userId)
+                                            }} className="text-color-cream ml-3 me-2">
 
-                                            <img
-                                                src={CurrentUserProfilePic}
-                                                className="border profile-pic-height rounded-circle me-2"
-                                                alt="Avatar"
-                                                width="40"
-                                            />
-                                        </a>
-                                        <div className=" w-100 ml-2 text-left">
-
-                                            <textarea
-                                                id='comment_body'
-                                                onChange={updateComment}
-                                                className="comment-box"
-                                                rows="2"
-                                                placeholder="Write a comment"
-                                            />
-
-                                            <a href="#" onClick={() => addComment(post.id)} className="text-color-cream ml-3 me-2">
-                                                post comment
+                                                <img
+                                                    src={CurrentUserProfilePic}
+                                                    className="border profile-pic-height rounded-circle me-2"
+                                                    alt="Avatar"
+                                                    width="40"
+                                                />
                                             </a>
+                                            <div className=" w-100 ml-2 text-left">
+
+                                                <textarea
+                                                    id='comment_body'
+                                                    onChange={updateComment}
+                                                    className="comment-box"
+                                                    rows="2"
+                                                    placeholder="Write a comment"
+                                                />
+
+                                                <a href="#" onClick={() => addComment(post.id)} className="text-color-cream ml-3 me-2">
+                                                    post comment
+                                                </a>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
+
 
                                     <div className="mt-5">
                                         {comments[post.id]?.map((comnt, idx) => (
@@ -1116,8 +1121,14 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
                                                     </div>
                                                     <a
                                                         type="button"
-                                                        onClick={() => updateLikes(comnt.id, 'comment')}
-                                                        data-mdb-button-init
+
+                                                        onClick={(e) => {
+                                                            if (!user.authenticated) {
+                                                                e.preventDefault(); // Prevent click action if not authenticated
+                                                            } else {
+                                                                updateLikes(comnt.id, 'post');
+                                                            }
+                                                        }} data-mdb-button-init
                                                         data-mdb-ripple-init
                                                         className="btn btn-link text-color-cream btn-sm"
                                                         data-mdb-ripple-color="dark"
