@@ -1,0 +1,28 @@
+Search Feature
+-> for users in the database, search as substring in the username
+-> posts search substring in the post body or title 
+general flow:
+ user check marks the search type (posts, users)
+ user types the query 
+ clicks search
+
+ if not check_marked:
+    throw error_message 
+ else:
+ make get request to the server
+ if search_type is posts:
+    query for posts title and body that have the searched substring in them
+ else if search_type is users:
+    query for users.username that have the searched substring in them
+ create the result set send Jsonresponse to the client.
+
+ if search_results is not empty :
+   display posts for posts and user porfiles(just like the recommendatons UI) for users
+
+ else :
+   add message No results found. 
+   
+   DONEEEEE
+   
+
+    

@@ -22,6 +22,10 @@ body {
     line-height: 1.6;
 }
 
+.custom-badge {
+    font-size: medium;
+}
+
 /* Sidebar */
 .sidebar {
     position: fixed;
@@ -233,6 +237,13 @@ body {
 
 .username-size {
     font-size: 50px;
+    font-weight: 700;
+    color: var(--text-color);
+    letter-spacing: -1px;
+}
+
+.username-size-1 {
+    font-size: 30px;
     font-weight: 700;
     color: var(--text-color);
     letter-spacing: -1px;

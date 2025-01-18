@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_extensions'
 ]
 
 MIDDLEWARE = [
@@ -65,6 +66,7 @@ TEMPLATES = [
     },
 ]
 
+# https://github.com/me50/Abu-bakkar-siddique.git
 WSGI_APPLICATION = 'project4.wsgi.application'
 
 MEDIA_URL = '/media/'

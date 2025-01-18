@@ -1,5 +1,8 @@
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError, transaction
+from django.db import connection
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.core.paginator import Paginator
@@ -8,8 +11,13 @@ from django.core.serializers import serialize
 from django.db.models import Count
 from django.urls import reverse
 from .models import *
+from .recommendations import *
 import json
-import time 
+import time
+from .LRU_cache import UserSearchCache 
+
+# global cache object
+user_cache = UserSearchCache(1000)
 
 def default(request):
     return render(request, "network/index.html", status=200)
@@ -21,7 +29,6 @@ def index(request):
         if this_user.is_authenticated:
             userInfo = {'username' : this_user.username, 'authenticated' : True, 'userId' : this_user.pk}
             return JsonResponse(userInfo, status =200)
-
         else:
             userInfo = {'username' : None, 'authenticated' : False, 'userId': this_user.pk}
             return JsonResponse(userInfo, status =401)
@@ -48,7 +55,6 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return JsonResponse({'message' : 'logout successful'}, status = 200)
-
 @csrf_exempt
 def register(request):
     if request.method == 'GET' and request.accepts('text/html') :
@@ -76,6 +82,7 @@ def register(request):
         login(request, user)
         return  JsonResponse({"message": "Registeration successful.", "userId": user.pk},status = 200)
 
+@login_required(login_url="/login")
 def create_post(request):
 
     if request.method == 'GET' and request.accepts('text/html') :
@@ -98,7 +105,7 @@ def create_post(request):
         return JsonResponse({'message': 'Post created successfully', 'post_id': post.id}, status=200)
     return JsonResponse({'error': 'Invalid request method'}, status=405)  # Method not allowed
 
-@csrf_exempt
+@login_required(login_url="/login")
 def profile(request):
     # If it's a GET request with Accept header for HTML, render the main page
     if request.method == 'GET' and request.accepts('text/html'):
@@ -137,7 +144,6 @@ def profile(request):
             'selfProfile' : int(request.user.pk) == int(user_id),
             'imFollowing' : im_following
         }
-        print('I am following this user: ', im_following)
 
         return JsonResponse(profile_details, status=200)
 
@@ -156,10 +162,6 @@ def feed (request) :
         page = request.GET.get('page')
         if category == 'null' : category = 'all'
 
-        if page is None:
-            print('page is None')
-        else :
-            print(f"{type(page)} : {page}")
         posts = None
         all_posts = []  
         
@@ -197,7 +199,16 @@ def feed (request) :
                         'comment_post' : comment.post.pk
                     }
                     comments.append(c)
-                          
+
+            self_post = False
+            current_user_profile_pic = ""
+
+            if not request.user.is_anonymous and int(request.user.pk) == int(post.user.pk):
+                self_post = True
+
+            if not request.user.is_anonymous:
+                current_user_profile_pic = request.user.profile_picture.url
+
             p = {
                 'id' : post.pk,
                 'username': post.user.username,
@@ -210,12 +221,12 @@ def feed (request) :
                 'post_comments' : comments,
                 'comment_count' : comment_count,
                 'actual_timestamp' : post.timestamp,
-                'self_post' : int(post.user.pk) == int(request.user.pk)
+                'self_post' : self_post
             }
-
             all_posts.append(p)
 
-        return JsonResponse({"posts" : all_posts, 'current_user_profile_pic' : request.user.profile_picture.url}, status = 200) # success
+
+        return JsonResponse({"posts" : all_posts, 'current_user_profile_pic' : current_user_profile_pic}, status = 200) # success
 
     #post request handler
     else :
@@ -259,7 +270,31 @@ def feed (request) :
 
         return JsonResponse({'message' : 'operation successful!'}, status = 200)
 
-# @login_required
+
+@login_required
+def get_friend_recommendations(request):
+    if request.method == 'GET' and request.accepts('text/html'):
+        return render('network/index.html')
+ 
+    friend_graph = FriendGraph(request.user)
+    friend_graph.build_graph()
+    recommended_users = friend_graph.get_recommendations()
+    
+    recommendations = []
+    for user in recommended_users:
+
+        recommendations.append({
+            'id': user.id,
+            'username': user.username,
+            'followers' : user.followed_by.count(),
+            'following' : user.follows.count(),
+            'profile_picture': request.build_absolute_uri(user.profile_picture.url),
+            'interests' : [interest.name for interest in user.interests.all()]
+        })
+        
+    return JsonResponse({'recommendations': recommendations}, status=200)
+
+@login_required(login_url="/login")
 def follow_unfollow_request(request):
     
     current_user = request.user 
@@ -279,8 +314,6 @@ def follow_unfollow_request(request):
         current_user.save()
 
         following_people = current_user.following.all()
-    for f in following_people:
-        print(f.username) 
     
     return JsonResponse({'message' : 'follow/unfollow request successful'},status = 200)
 
@@ -307,3 +340,57 @@ def edit_post(request):
 
 def for_o_for(request, exception):
     return render (request ,'network/for_o_for.html', 404)
+
+@login_required
+def search(request):
+    if request.method == "GET" and request.accepts('text/html'):
+        return render(request, "network/index.html", status=200)
+    
+    elif request.method == 'POST':
+        return JsonResponse({"message": "bad request, only GET is accepted"}, status=400)
+
+    elif request.method == "GET":
+        query = request.GET.get('query', '').strip()
+        print(f"cache : {user_cache.cache_dict}")
+        if not query :
+            return JsonResponse({"message" : "search query is empty"}, status = 400)
+        
+        result_set = []
+
+        # look into the cache first
+        for k, v in user_cache.cache_dict.items(): 
+            if query in k:
+                user = user_cache.get(k)
+                result_set.append({
+                    'id': user.id,
+                    'username': user.username,
+                    'followers': user.followed_by.count(),
+                    'following': user.follows.count(),
+                    'profile_picture': request.build_absolute_uri(user.profile_picture.url),
+                    'interests': [interest.name for interest in user.interests.all()]
+                })  
+                
+        # user found in cache 
+        if result_set:
+            return JsonResponse({"search_results": result_set}, status=200)
+
+                
+        # Corrected the spelling of `contains` to `icontains` for case-insensitive search
+        results = User.objects.filter(
+            Q(first_name__icontains=query) | Q(last_name__icontains=query) | Q(username__icontains = query)
+        )
+        for user in results:
+            user_cache.put(user)
+            print(f"{user.profile_picture.url}") 
+
+            result_set.append({
+                    'id': user.id,
+                    'username': user.username,
+                    'followers': user.followed_by.count(),
+                    'following': user.follows.count(),
+                    'profile_picture': request.build_absolute_uri(user.profile_picture.url),
+                    'interests': [interest.name for interest in user.interests.all()]
+                })
+        return JsonResponse({"search_results": result_set}, status=200)
+
+    raise ValueError("Invalid request")
