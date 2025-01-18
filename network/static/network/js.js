@@ -119,12 +119,6 @@ function FixedNavbars({ setCurrentPage, currentPage }) {
     const { user } = useContext(AuthGlobalContext);
     return (
         <>
-            <div className="topnav">
-                <div className="search-container">
-                    <input type="text" className="search-input shape-round col-10" placeholder="Search..." />
-                    <button className="btn search-button shape-round col-2">Search</button>
-                </div>
-            </div>
 
             <div>
                 <nav className="sidebar">
@@ -142,6 +136,9 @@ function FixedNavbars({ setCurrentPage, currentPage }) {
                         <li className="nav-item">
                             <Link className="nav-link" onClick={() => setCurrentPage(1)} to={`/feed?category=all&page=${currentPage}`}>All Posts</Link>
                         </li>
+                        <li className="nav-item">
+                            <Link className="nav-link" to="/search">Search</Link>
+                        </li>
 
                         {user.authenticated && (
                             <>
@@ -153,8 +150,13 @@ function FixedNavbars({ setCurrentPage, currentPage }) {
                                     <Link className="nav-link" onClick={() => setCurrentPage(1)} to={`/feed?category=following&page=${currentPage}`}>Following</Link>
                                 </li>
                                 <li className="nav-item">
+                                    <Link className="nav-link" to="/recommendations">Recommendations</Link>
+                                </li>
+
+                                <li className="nav-item">
                                     <Link className="nav-link" to="/logout">Log Out</Link>
                                 </li>
+
                             </>
                         )}
 
@@ -429,10 +431,6 @@ function App() {
             <BrowserRouter>
                 <FixedNavbars currentPage={currentPage} setCurrentPage={setCurrentPage} />
                 <Switch>
-                    {/* Directly use component prop for most routes */}
-
-                    {/* <Route exact path="/" component={AllPosts} /> */}
-
                     <Route
                         exact path="/create_post"
                         render={(props) => (
@@ -451,7 +449,15 @@ function App() {
                             />
                         )}
                     />
-
+                    <Route
+                        exact path="/search"
+                        render={(props) => (
+                            <Search
+                                {...props}
+                                user={user}
+                            />
+                        )}
+                    />
                     <Route
                         exact path="/"
                         render={(props) => (
@@ -462,7 +468,15 @@ function App() {
                             />
                         )}
                     />
-
+                    <Route
+                        exact path="/recommendations"
+                        render={(props) => (
+                            <Recommendations
+                                {...props}
+                                user={user}
+                            />
+                        )}
+                    />
                     <Route
                         path="/feed"
                         render={(props) => (
@@ -760,11 +774,127 @@ function ProfilePage({ authenticated = false, setCurrentPage, currentPage }) {
             </div>
         </>
     );
-}// user is undefined means fetch all posts, not specific to any user
+}
+function Recommendations({ user }) {
+
+    const [allRecommendations, setAllRecommendations] = useState([]);
+    const [followed, setFollowed] = useState(false);
+    const history = useHistory();
+    let url = new URL("/recommendations", window.location.origin);
+
+    function HandleFollowRequest(userId) {
+        fetch('/follow', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRFToken': CSRFToken()
+            },
+            body: JSON.stringify({
+                'userID': userId
+            })
+        }).then(response => {
+            if (response.ok) {
+                console.log(`yess ${response.status}`);
+                return response.json();
+            }
+        }).then(data => {
+            console.log(data.message);
+            setFollowed(!followed);
+            console.log(followed);
+        });
+    }
+
+    useEffect(() => {
+        fetch(url, {
+            method: "GET",
+            headers: {
+                'X-CSRFToken': CSRFToken(),
+                'Accept': 'application/json'
+            }
+        }).then(response => {
+            if (response.ok) {
+                console.log(`recommendations fetched : ${response.status}`);
+                return response.json();
+            }
+        }).then(data => {
+            // update state here
+            console.log(data.recommendations)
+            setAllRecommendations(data.recommendations);
+        }).catch(e => {
+            throw new Error(`An Error occured while fetching recommendations ${e}`);
+        })
+    }, [followed]);
+
+    function makeFollowCall(e, user_id) {
+        e.preventDefault();
+        console.log(user_id);
+        HandleFollowRequest(user_id);
+    }
+    return (
+        <>
+
+            <div className="row justify-content-center align-items-center">
+                {allRecommendations.map((rec, idx) =>
+                (
+                    < div key={idx} className=" col-4 container mt-2" >
+                        <div className="profile-container text-center">
+                            <div className="text-center text-color-cream mt-4">
+                                <div className="mt-4">
+                                    <img
+                                        src={rec.profile_picture}
+                                        className="border rounded-circle profile-dimensions"
+                                        alt="Avatar"
+                                        width="120"
+                                    />
+                                </div>
+                                <div className="mt-3 text-center">
+                                    <a href="#" onClick={(e) => {
+                                        e.preventDefault();
+                                        history.push(`/profile?userID=${rec.id}`)
+
+                                    }}>
+                                        <h4 className="mb-2 username-size-1">{rec.username}</h4>
+                                    </a>
+                                    <button onClick={(e) => makeFollowCall(e, rec.id)} className="btn-prim follow shape-round col-6">
+                                        follow
+                                    </button>
+                                    <div className="justify-content-center mt-4 px-4 row">
+                                        <div className="text-size-2">
+                                            <h6 className="mb-0 col-12 text-size-2">Followers</h6>
+                                            <span>{rec.followers}</span>
+                                        </div>
+                                        <div className="text-size-2">
+                                            <h6 className="mb-0 col-12 text-size-2">Following</h6>
+                                            <span>{rec.following}</span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3">
+                                        <h6 className="mb-2 text-size-2">Interests</h6>
+
+                                        <div className="d-flex flex-wrap justify-content-center gap-2">
+                                            {rec.interests.map((interest, idx) => (
+                                                <span key={idx} className="badge bg-secondary mt-1 custom-badge ml-1">{interest}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div >
+
+
+        </>
+
+    );
+}
+
+// user is undefined means fetch all posts, not specific to any user
 function AllPosts({ userId = null, profileDetails = undefined, currentPage, setCurrentPage }) {
     const [loader, setLoader] = useState(true);
     const [posts, setPosts] = useState([]); // all posts
-    const [comments, setComments] = useState([]); // all comments 
+    const [comments, setComments] = useState([]); // all comments
     const [CurrentUserProfilePic, setCurrentUserProfilePic] = useState('');
     const [comment, setComment] = useState('');
     const [like, setLike] = useState({ 'type': undefined, 'id': undefined });
@@ -1169,4 +1299,137 @@ function AllPosts({ userId = null, profileDetails = undefined, currentPage, setC
     );
 }
 
+function Search() {
+    const [searchResults, setSearchResults] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [followed, setFollowed] = useState(false);
+    const history = useHistory();
+
+    function HandleFollowRequest(userId) {
+        fetch('/follow', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRFToken': CSRFToken()
+            },
+            body: JSON.stringify({
+                'userID': userId
+            })
+        }).then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+        }).then(data => {
+            setFollowed(!followed);
+        });
+    }
+
+    function handleSearch() {
+        const url = new URL('/search', window.location.origin);
+        url.searchParams.append('query', searchQuery);
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': CSRFToken(),
+                'Accept': 'application/json'
+            }
+        }).then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+        }).then(data => {
+            console.log(data.search_results);
+            setSearchResults(data.search_results);
+
+        }).catch(e => {
+            throw new Error(`An Error occurred while searching: ${e}`);
+        });
+    }
+
+    function makeFollowCall(e, user_id) {
+        e.preventDefault();
+        HandleFollowRequest(user_id);
+    }
+
+    return (
+        <>
+            <div className="topnav row">
+                <div className="search-container">
+                    <input
+                        type="text"
+                        className="search-input shape-round col-8"
+                        placeholder="Search..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                                handleSearch();
+                            }
+                        }}
+                    />
+                    <button
+                        onClick={handleSearch}
+                        className="btn search-button shape-round col-4"
+                    >
+                        Search
+                    </button>
+                </div>
+            </div>
+
+            <div className="row justify-content-center align-items-center">
+                {searchResults.map((user, idx) => (
+                    <div key={idx} className="col-4 container mt-2">
+                        <div className="profile-container text-center">
+                            <div className="text-center text-color-cream mt-4">
+                                <div className="mt-4">
+                                    <img
+                                        src={user.profile_picture}
+                                        className="border rounded-circle profile-dimensions"
+                                        alt="Avatar"
+                                        width="120"
+                                    />
+                                </div>
+                                <div className="mt-3 text-center">
+                                    <a href="#" onClick={(e) => {
+                                        e.preventDefault();
+                                        history.push(`/profile?userID=${user.id}`)
+                                    }}>
+                                        <h4 className="mb-2 username-size-1">{user.username}</h4>
+                                    </a>
+                                    <button
+                                        onClick={(e) => makeFollowCall(e, user.id)}
+                                        className="btn-prim follow shape-round col-6"
+                                    >
+                                        follow
+                                    </button>
+                                    <div className="justify-content-center mt-4 px-4 row">
+                                        <div className="text-size-2">
+                                            <h6 className="mb-0 col-12 text-size-2">Followers</h6>
+                                            <span>{user.followers}</span>
+                                        </div>
+                                        <div className="text-size-2">
+                                            <h6 className="mb-0 col-12 text-size-2">Following</h6>
+                                            <span>{user.following}</span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3">
+                                        <h6 className="mb-2 text-size-2">Interests</h6>
+                                        <div className="d-flex flex-wrap justify-content-center gap-2">
+                                            {user.interests.map((interest, idx) => (
+                                                <span key={idx} className="badge bg-secondary mt-1 custom-badge ml-1">
+                                                    {interest}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </>
+    );
+};
 ReactDOM.render(<App />, document.querySelector("#root"));
